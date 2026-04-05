@@ -1,0 +1,61 @@
+{
+  "name": "claude-mcp-bridge",
+  "version": "0.1.0",
+  "description": "MCP server that wraps Claude Code CLI for query, structured output, and health checks",
+  "author": "Tim Birrell",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "claude-mcp-bridge": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "prompts"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "lint": "eslint src/ tests/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "CLAUDE_INTEGRATION=1 vitest run tests/integration/",
+    "smoke": "node scripts/smoke-test.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "claude",
+    "claude-code",
+    "anthropic",
+    "code-review",
+    "ai-tools",
+    "model-context-protocol"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hampsterx/claude-mcp-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hampsterx/claude-mcp-bridge/issues"
+  },
+  "homepage": "https://github.com/hampsterx/claude-mcp-bridge#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "strip-ansi": "^7.1.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}
