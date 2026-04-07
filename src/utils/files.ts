@@ -41,19 +41,27 @@ export async function readFiles(
 
   return Promise.all(
     files.map(async (f): Promise<FileContent> => {
-      const resolved = await resolveAndVerify(f, rootDir);
-      const size = await checkFileSize(resolved);
+      try {
+        const resolved = await resolveAndVerify(f, rootDir);
+        const size = await checkFileSize(resolved);
 
-      if (size > MAX_FILE_SIZE) {
+        if (size > MAX_FILE_SIZE) {
+          return {
+            path: f,
+            content: "",
+            skipped: `${(size / 1024).toFixed(0)}KB exceeds ${(MAX_FILE_SIZE / 1024).toFixed(0)}KB limit`,
+          };
+        }
+
+        const content = await readFile(resolved, "utf8");
+        return { path: f, content };
+      } catch (e) {
         return {
           path: f,
           content: "",
-          skipped: `${(size / 1024).toFixed(0)}KB exceeds ${(MAX_FILE_SIZE / 1024).toFixed(0)}KB limit`,
+          skipped: e instanceof Error ? e.message : String(e),
         };
       }
-
-      const content = await readFile(resolved, "utf8");
-      return { path: f, content };
     }),
   );
 }

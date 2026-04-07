@@ -195,6 +195,9 @@ async function executeQuickReview(input: InternalReviewInput): Promise<ReviewRes
 
   try {
     if (base) {
+      if (!/^[\w./-]+$/.test(base)) {
+        throw new Error(`Invalid base ref: "${base}" — must be a valid git ref (alphanumeric, -, _, /, .)`);
+      }
       diff = getBranchDiff(cwd, base);
       diffSource = "branch";
     } else if (uncommitted) {

@@ -9,9 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 
 - Initial release
-- `codex` tool: execute prompts with file context, session resume, sandbox control
+- `query` tool: execute prompts with file context, session resume, sandbox control
 - `review` tool: agentic (full-auto) and quick (diff-only) code review
-- `search` tool: web search via Codex CLI `--search` flag
+- `search` tool: web search via Claude CLI `--search` flag
 - `structured` tool: JSON Schema validated output with Ajv
 - `ping` tool: health check and CLI capability detection
 - Hardened subprocess environment with explicit env allowlist

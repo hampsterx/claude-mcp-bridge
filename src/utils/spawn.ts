@@ -22,10 +22,13 @@ export interface SpawnResult {
 }
 
 let activeCount = 0;
-const maxConcurrent = parseInt(
+const parsedConcurrent = parseInt(
   process.env["CLAUDE_MAX_CONCURRENT"] ?? String(DEFAULT_MAX_CONCURRENT),
   10,
 );
+const maxConcurrent = Number.isNaN(parsedConcurrent) || parsedConcurrent <= 0
+  ? DEFAULT_MAX_CONCURRENT
+  : parsedConcurrent;
 const waitQueue: Array<{
   resolve: () => void;
   reject: (err: Error) => void;

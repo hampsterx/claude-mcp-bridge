@@ -20,9 +20,14 @@ describe("resolveAndVerify", () => {
     );
   });
 
-  it("handles backslash normalization", async () => {
-    const resolved = await resolveAndVerify("test.txt", tempDir);
-    expect(resolved).toBe(testFile);
+  it("handles subdirectory paths", async () => {
+    const { mkdirSync, writeFileSync: writeSync } = await import("node:fs");
+    const subDir = join(tempDir, "sub");
+    mkdirSync(subDir, { recursive: true });
+    const subFile = join(subDir, "nested.txt");
+    writeSync(subFile, "nested");
+    const resolved = await resolveAndVerify("sub/nested.txt", tempDir);
+    expect(resolved).toBe(subFile);
   });
 });
 

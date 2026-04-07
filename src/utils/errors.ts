@@ -50,6 +50,7 @@ export function checkErrorPatterns(exitCode: number | null, stdout: string, stde
 
   if (
     lower.includes("connectionrefused")
+    || lower.includes("connection refused")
     || lower.includes("unable to connect to api")
     || lower.includes("network")
     || lower.includes("econnrefused")
@@ -62,4 +63,9 @@ export function throwIfClaudeError(isError: boolean, message: string): void {
   if (isError) {
     throw new Error(message);
   }
+}
+
+export function getErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  return String(e);
 }

@@ -9,6 +9,7 @@ import { executeReview } from "./tools/review.js";
 import { executeSearch } from "./tools/search.js";
 import { executePing } from "./tools/ping.js";
 import { executeStructured } from "./tools/structured.js";
+import { getErrorMessage } from "./utils/errors.js";
 
 const require = createRequire(import.meta.url);
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
@@ -82,7 +83,7 @@ server.tool(
     } catch (e) {
       console.error("[query]", e);
       return {
-        content: [{ type: "text", text: `Error: ${(e as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${getErrorMessage(e)}` }],
         isError: true,
       };
     }
@@ -125,21 +126,33 @@ server.tool(
   async (input) => {
     try {
       const result = await executeStructured(input);
+
+      if (!result.valid) {
+        return {
+          content: [{ type: "text", text: `Error: ${result.errors ?? "Invalid response"}` }],
+          isError: true,
+        };
+      }
+
+      const content: Array<{ type: "text"; text: string }> = [
+        { type: "text", text: result.response },
+      ];
+
       const meta: string[] = [];
-      if (result.errors) meta.push(`Errors: ${result.errors}`);
       if (result.filesIncluded.length > 0) meta.push(`Files: ${result.filesIncluded.join(", ")}`);
       if (result.model) meta.push(`Model: ${result.model}`);
       if (result.sessionId) meta.push(`Session: ${result.sessionId}`);
       if (typeof result.totalCostUsd === "number") meta.push(`Cost USD: ${result.totalCostUsd}`);
       if (result.timedOut) meta.push("(timed out)");
+      if (meta.length > 0) {
+        content.push({ type: "text", text: meta.join("\n") });
+      }
 
-      return {
-        content: [{ type: "text", text: appendMeta(result.response, meta) }],
-      };
+      return { content };
     } catch (e) {
       console.error("[structured]", e);
       return {
-        content: [{ type: "text", text: `Error: ${(e as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${getErrorMessage(e)}` }],
         isError: true,
       };
     }
@@ -182,7 +195,7 @@ server.tool(
     } catch (e) {
       console.error("[review]", e);
       return {
-        content: [{ type: "text", text: `Error: ${(e as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${getErrorMessage(e)}` }],
         isError: true,
       };
     }
@@ -218,7 +231,7 @@ server.tool(
     } catch (e) {
       console.error("[search]", e);
       return {
-        content: [{ type: "text", text: `Error: ${(e as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${getErrorMessage(e)}` }],
         isError: true,
       };
     }
@@ -248,7 +261,7 @@ server.tool(
     } catch (e) {
       console.error("[ping]", e);
       return {
-        content: [{ type: "text", text: `Error: ${(e as Error).message}` }],
+        content: [{ type: "text", text: `Error: ${getErrorMessage(e)}` }],
         isError: true,
       };
     }
