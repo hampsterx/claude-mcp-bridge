@@ -32,6 +32,3 @@ claude -p --bare --max-budget-usd 0.50 "Is this retry logic sound?"
 - You need concurrency management and security hardening
 - You want cost metadata surfaced in MCP responses
 
-## Status
-
-Early development. See [PLAN_CLAUDE_MCP_BRIDGE.md](PLAN_CLAUDE_MCP_BRIDGE.md) for implementation plan.
