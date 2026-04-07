@@ -1,5 +1,11 @@
 # claude-mcp-bridge
 
+[![npm version](https://img.shields.io/npm/v/claude-mcp-bridge)](https://www.npmjs.com/package/claude-mcp-bridge)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
+[![MCP SDK](https://img.shields.io/badge/MCP%20SDK-1.12-purple)](https://modelcontextprotocol.io/)
+
 MCP server that wraps [Claude Code CLI](https://github.com/anthropics/claude-code) as a subprocess, exposing code execution, agentic review, web search, and structured output as MCP tools.
 
 Works with any MCP client: Codex CLI, Gemini CLI, Cursor, Windsurf, VS Code, or any tool that speaks [Model Context Protocol](https://modelcontextprotocol.io/).
