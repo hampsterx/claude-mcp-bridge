@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.2.0] - 2026-04-08
+
+### Added
+
+- Support subscription-based auth alongside API key authentication
+- Ping tool detects auth method (API key vs subscription) and reports it
+
+### Changed
+
+- README expanded with full tool reference, configuration tables, and security docs
+- README badges for npm version, license, and Node.js requirement
+
 ## [0.1.0] - 2026-04-05
 
 ### Added
