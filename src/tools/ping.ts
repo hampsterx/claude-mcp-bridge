@@ -1,4 +1,6 @@
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createRequire } from "node:module";
 import { findClaudeBinary } from "../utils/spawn.js";
 import { buildSubprocessEnv } from "../utils/env.js";
@@ -10,7 +12,8 @@ const PKG_VERSION: string = (require("../../package.json") as { version: string 
 export interface PingResult {
   cliFound: boolean;
   version: string | null;
-  authStatus: "ok" | "missing" | "error";
+  authMethod: "api-key" | "subscription" | "none";
+  subscriptionType: string | null;
   defaultModel: string | null;
   fallbackModel: string | null;
   serverVersion: string;
@@ -24,9 +27,33 @@ export interface PingResult {
   };
 }
 
-function detectAuthStatus(): PingResult["authStatus"] {
+interface CredentialsFile {
+  claudeAiOauth?: {
+    expiresAt?: number;
+    subscriptionType?: string;
+  };
+}
+
+function detectAuth(): { method: PingResult["authMethod"]; subscriptionType: string | null } {
   const env = buildSubprocessEnv();
-  return env["ANTHROPIC_API_KEY"] ? "ok" : "missing";
+  if (env["ANTHROPIC_API_KEY"]) {
+    return { method: "api-key", subscriptionType: null };
+  }
+
+  const configDir = process.env["CLAUDE_CONFIG_DIR"]
+    ?? join(process.env["HOME"] ?? "", ".claude");
+  try {
+    const raw = readFileSync(join(configDir, ".credentials.json"), "utf8");
+    const creds = JSON.parse(raw) as CredentialsFile;
+    const oauth = creds.claudeAiOauth;
+    if (oauth?.expiresAt && oauth.expiresAt > Date.now()) {
+      return { method: "subscription", subscriptionType: oauth.subscriptionType ?? null };
+    }
+  } catch {
+    // No credentials file or unreadable
+  }
+
+  return { method: "none", subscriptionType: null };
 }
 
 export async function executePing(): Promise<PingResult> {
@@ -48,7 +75,8 @@ export async function executePing(): Promise<PingResult> {
       return {
         cliFound: false,
         version: null,
-        authStatus: "missing",
+        authMethod: "none",
+        subscriptionType: null,
         defaultModel: getDefaultModel("query"),
         fallbackModel: getFallbackModel() ?? null,
         serverVersion: PKG_VERSION,
@@ -62,10 +90,12 @@ export async function executePing(): Promise<PingResult> {
         },
       };
     }
+    const { method, subscriptionType } = detectAuth();
     return {
       cliFound: true,
       version: null,
-      authStatus: "error",
+      authMethod: method,
+      subscriptionType,
       defaultModel: getDefaultModel("query"),
       fallbackModel: getFallbackModel() ?? null,
       serverVersion: PKG_VERSION,
@@ -80,10 +110,12 @@ export async function executePing(): Promise<PingResult> {
     };
   }
 
+  const auth = detectAuth();
   return {
     cliFound,
     version,
-    authStatus: detectAuthStatus(),
+    authMethod: auth.method,
+    subscriptionType: auth.subscriptionType,
     defaultModel: getDefaultModel("query"),
     fallbackModel: getFallbackModel() ?? null,
     serverVersion: PKG_VERSION,

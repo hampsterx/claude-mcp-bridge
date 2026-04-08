@@ -240,7 +240,7 @@ server.tool(
 
 server.tool(
   "ping",
-  "Check whether Claude CLI is installed and whether API-key auth is available for bare mode.",
+  "Check whether Claude CLI is installed and what auth method is available (API key or subscription).",
   {},
   async () => {
     try {
@@ -248,7 +248,8 @@ server.tool(
       const lines = [
         `cliFound: ${result.cliFound}`,
         `version: ${result.version ?? "unknown"}`,
-        `authStatus: ${result.authStatus}`,
+        `authMethod: ${result.authMethod}`,
+        ...(result.subscriptionType ? [`subscriptionType: ${result.subscriptionType}`] : []),
         `defaultModel: ${result.defaultModel ?? "none"}`,
         `fallbackModel: ${result.fallbackModel ?? "none"}`,
         `serverVersion: ${result.serverVersion}`,

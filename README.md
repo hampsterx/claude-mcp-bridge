@@ -44,7 +44,9 @@ claude -p --bare --max-budget-usd 0.50 "Is this retry logic sound?"
 
 - Node.js >= 18
 - [Claude Code CLI](https://github.com/anthropics/claude-code) installed and on PATH
-- `ANTHROPIC_API_KEY` set for bare mode
+- Authentication (one of):
+  - **Subscription**: `claude login` (uses your Pro/Max plan, no API credits needed)
+  - **API key**: set `ANTHROPIC_API_KEY` (billed per use via console.anthropic.com)
 
 ### From source
 
@@ -207,19 +209,33 @@ Health check. No parameters. Returns CLI availability, auth status, configured m
 
 ```
 cliFound: true
-version: 1.0.33 (Claude Code)
-authStatus: ok
+version: 2.1.92 (Claude Code)
+authMethod: subscription
+subscriptionType: max
 defaultModel: sonnet
 fallbackModel: haiku
 serverVersion: 0.1.0
-nodeVersion: v22.12.0
+nodeVersion: v22.22.0
 maxConcurrent: 3
 capabilities: bareMode=true, jsonOutput=true, jsonSchema=true, sessionResume=true
 ```
 
+`authMethod` is one of: `api-key` (ANTHROPIC_API_KEY set), `subscription` (logged in via `claude login`), or `none`.
+
 ## Configuration
 
-All configuration is through environment variables. None are required if Claude CLI is on PATH and `ANTHROPIC_API_KEY` is already set in your environment.
+All configuration is through environment variables. None are required if Claude CLI is on PATH and you're authenticated (via `claude login` or `ANTHROPIC_API_KEY`).
+
+### Authentication
+
+The bridge supports two auth methods, matching Claude Code CLI:
+
+| Method | Setup | Billing |
+|--------|-------|---------|
+| **Subscription** | `claude login` (OAuth) | Pro/Max plan (included) |
+| **API key** | Set `ANTHROPIC_API_KEY` | Pay-per-use (console.anthropic.com) |
+
+If `ANTHROPIC_API_KEY` is set, it takes priority over subscription auth. To use your subscription instead, unset the API key.
 
 ### Models
 
