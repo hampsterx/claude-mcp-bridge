@@ -7,6 +7,7 @@ import {
   reviewDescription,
   searchDescription,
   structuredDescription,
+  listSessionsDescription,
   pingDescription,
 } from "../../src/descriptions.js";
 
@@ -17,6 +18,7 @@ const allDescriptions = {
   review: reviewDescription,
   search: searchDescription,
   structured: structuredDescription,
+  listSessions: listSessionsDescription,
   ping: pingDescription,
 } as const;
 
@@ -126,6 +128,24 @@ describe("tool descriptions", () => {
     });
   });
 
+  describe("listSessions description content", () => {
+    it("mentions orchestration use case", () => {
+      expect(listSessionsDescription).toContain("orchestration");
+    });
+
+    it("mentions session resume", () => {
+      expect(listSessionsDescription).toContain("sessionId");
+    });
+
+    it("indicates no cost", () => {
+      expect(listSessionsDescription).toContain("No cost");
+    });
+
+    it("mentions cumulative cost tracking", () => {
+      expect(listSessionsDescription).toContain("cumulative cost");
+    });
+  });
+
   describe("ping description content", () => {
     it("is concise (under 200 bytes)", () => {
       expect(Buffer.byteLength(pingDescription, "utf8")).toBeLessThan(200);
@@ -146,7 +166,7 @@ describe("tool descriptions", () => {
       "utf8",
     );
 
-    for (const name of ["query", "review", "search", "structured", "ping"]) {
+    for (const name of ["query", "review", "search", "structured", "listSessions", "ping"]) {
       it(`${name} tool uses ${name}Description from descriptions.ts`, () => {
         expect(indexSource).toContain(`description: ${name}Description`);
       });

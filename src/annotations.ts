@@ -45,6 +45,13 @@ export const structuredAnnotations: ToolAnnotations = {
   openWorldHint: true,
 };
 
+export const listSessionsAnnotations: ToolAnnotations = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+
 export const pingAnnotations: ToolAnnotations = {
   readOnlyHint: true,
   destructiveHint: false,

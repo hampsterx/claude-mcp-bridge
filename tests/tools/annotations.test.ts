@@ -4,6 +4,7 @@ import {
   reviewAnnotations,
   searchAnnotations,
   structuredAnnotations,
+  listSessionsAnnotations,
   pingAnnotations,
 } from "../../src/annotations.js";
 
@@ -13,6 +14,7 @@ describe("tool annotations", () => {
     review: reviewAnnotations,
     search: searchAnnotations,
     structured: structuredAnnotations,
+    listSessions: listSessionsAnnotations,
     ping: pingAnnotations,
   };
 
@@ -52,6 +54,15 @@ describe("tool annotations", () => {
     });
   });
 
+  it("listSessions: read-only (local lookup), not destructive, idempotent, closed world", () => {
+    expect(listSessionsAnnotations).toEqual({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
+  });
+
   it("ping: read-only (no session), not destructive, idempotent, closed world (local check only)", () => {
     expect(pingAnnotations).toEqual({
       readOnlyHint: true,
@@ -61,19 +72,22 @@ describe("tool annotations", () => {
     });
   });
 
-  it("all tools are non-destructive; only ping is read-only", () => {
+  it("all tools are non-destructive; only ping and listSessions are read-only", () => {
     for (const [name, ann] of Object.entries(allAnnotations)) {
       expect(ann.destructiveHint, `${name} should not be destructive`).toBe(false);
     }
     expect(pingAnnotations.readOnlyHint).toBe(true);
+    expect(listSessionsAnnotations.readOnlyHint).toBe(true);
     for (const name of ["query", "review", "search", "structured"] as const) {
       expect(allAnnotations[name].readOnlyHint, `${name} should not be read-only (session persistence)`).toBe(false);
     }
   });
 
-  it("family consistency: ping matches codex-mcp-bridge values", () => {
+  it("family consistency: ping and listSessions match codex-mcp-bridge values", () => {
     expect(pingAnnotations.readOnlyHint).toBe(true);
     expect(pingAnnotations.openWorldHint).toBe(false);
+    expect(listSessionsAnnotations.readOnlyHint).toBe(true);
+    expect(listSessionsAnnotations.openWorldHint).toBe(false);
     expect(searchAnnotations.idempotentHint).toBe(true);
   });
 });
