@@ -16,6 +16,7 @@ import {
   reviewAnnotations,
   searchAnnotations,
   structuredAnnotations,
+  listSessionsAnnotations,
   pingAnnotations,
 } from "./annotations.js";
 import {
@@ -23,8 +24,10 @@ import {
   reviewDescription,
   searchDescription,
   structuredDescription,
+  listSessionsDescription,
   pingDescription,
 } from "./descriptions.js";
+import { sessionStore, persist } from "./utils/session.js";
 
 const require = createRequire(import.meta.url);
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
@@ -52,6 +55,10 @@ server.registerTool(
         .string()
         .optional()
         .describe("Claude session ID to resume with --resume"),
+      resetSession: z
+        .boolean()
+        .optional()
+        .describe("Clear stored session state before execution (use with sessionId to start fresh)"),
       noSessionPersistence: z
         .boolean()
         .optional()
@@ -85,7 +92,17 @@ server.registerTool(
   async (input) => {
     const start = Date.now();
     try {
-      const result = await executeQuery(input);
+      if (input.resetSession && input.sessionId) {
+        sessionStore.delete(input.sessionId);
+      }
+      const result = await executeQuery(
+        input.resetSession ? { ...input, sessionId: undefined } : input,
+      );
+
+      const sessionId = result.sessionId ?? (input.resetSession ? undefined : input.sessionId);
+      if (sessionId) {
+        persist(sessionStore, sessionId, result);
+      }
 
       const textMeta: string[] = [];
       if (result.filesIncluded.length > 0) textMeta.push(`Files included: ${result.filesIncluded.join(", ")}`);
@@ -162,6 +179,12 @@ server.registerTool(
     const start = Date.now();
     try {
       const result = await executeStructured(input);
+
+      const sessionId = result.sessionId ?? input.sessionId;
+      if (sessionId) {
+        persist(sessionStore, sessionId, result);
+      }
+
       const meta = buildMeta({
         durationMs: Date.now() - start,
         model: result.model,
@@ -230,6 +253,11 @@ server.registerTool(
     try {
       const result = await executeReview(input);
 
+      const sessionId = result.sessionId ?? input.sessionId;
+      if (sessionId) {
+        persist(sessionStore, sessionId, result);
+      }
+
       const textMeta: string[] = [
         `Diff source: ${result.diffSource}`,
         `Mode: ${result.mode}`,
@@ -286,6 +314,11 @@ server.registerTool(
     try {
       const result = await executeSearch(input);
 
+      const sessionId = result.sessionId ?? input.sessionId;
+      if (sessionId) {
+        persist(sessionStore, sessionId, result);
+      }
+
       const text = result.timedOut
         ? `${result.response}\n\n---\n(timed out)`
         : result.response;
@@ -309,6 +342,26 @@ server.registerTool(
         _meta: buildMeta({ durationMs: Date.now() - start }),
       };
     }
+  },
+);
+
+// --- listSessions tool ---
+
+server.registerTool(
+  "listSessions",
+  {
+    title: "List Sessions",
+    description: listSessionsDescription,
+    inputSchema: {},
+    annotations: listSessionsAnnotations,
+  },
+  async () => {
+    const start = Date.now();
+    const sessions = sessionStore.list();
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify(sessions, null, 2) }],
+      _meta: buildMeta({ durationMs: Date.now() - start }),
+    };
   },
 );
 

@@ -56,4 +56,6 @@ Tips:
 - Schema max size: 20KB. Keep schemas focused for reliable output.
 - For extraction tasks, include source text via the files parameter or inline in the prompt.`;
 
+export const listSessionsDescription = `List active Claude CLI sessions tracked by this server. Returns session metadata (IDs, models, timing, turn counts, cumulative cost) for orchestration. Use to check available sessions before resuming with sessionId. No cost (local lookup only).`;
+
 export const pingDescription = `Health check: verifies Claude CLI is installed and authenticated, reports versions, capabilities, and configuration. No cost (local check only).`;
