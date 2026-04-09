@@ -28,6 +28,7 @@ import {
   pingDescription,
 } from "./descriptions.js";
 import { sessionStore, persist } from "./utils/session.js";
+import { maybeStartHeartbeat, type ProgressNotificationSender } from "./utils/progress.js";
 
 const require = createRequire(import.meta.url);
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
@@ -89,8 +90,12 @@ server.registerTool(
     },
     annotations: queryAnnotations,
   },
-  async (input) => {
+  async (input, extra) => {
     const start = Date.now();
+    const heartbeat = maybeStartHeartbeat(
+      extra._meta as { progressToken?: string | number } | undefined,
+      extra.sendNotification as ProgressNotificationSender,
+    );
     try {
       if (input.resetSession && input.sessionId) {
         sessionStore.delete(input.sessionId);
@@ -132,6 +137,8 @@ server.registerTool(
         isError: true,
         _meta: buildMeta({ durationMs: Date.now() - start }),
       };
+    } finally {
+      heartbeat.stop();
     }
   },
 );
@@ -248,8 +255,12 @@ server.registerTool(
     },
     annotations: reviewAnnotations,
   },
-  async (input) => {
+  async (input, extra) => {
     const start = Date.now();
+    const heartbeat = maybeStartHeartbeat(
+      extra._meta as { progressToken?: string | number } | undefined,
+      extra.sendNotification as ProgressNotificationSender,
+    );
     try {
       const result = await executeReview(input);
 
@@ -285,6 +296,8 @@ server.registerTool(
         isError: true,
         _meta: buildMeta({ durationMs: Date.now() - start }),
       };
+    } finally {
+      heartbeat.stop();
     }
   },
 );
@@ -309,8 +322,12 @@ server.registerTool(
     },
     annotations: searchAnnotations,
   },
-  async (input) => {
+  async (input, extra) => {
     const start = Date.now();
+    const heartbeat = maybeStartHeartbeat(
+      extra._meta as { progressToken?: string | number } | undefined,
+      extra.sendNotification as ProgressNotificationSender,
+    );
     try {
       const result = await executeSearch(input);
 
@@ -341,6 +358,8 @@ server.registerTool(
         isError: true,
         _meta: buildMeta({ durationMs: Date.now() - start }),
       };
+    } finally {
+      heartbeat.stop();
     }
   },
 );
