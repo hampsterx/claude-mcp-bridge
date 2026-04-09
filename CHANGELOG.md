@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.3.0] - 2026-04-09
+
+### Added
+
+- Tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) on all tools
+- Structured `_meta` on every tool response: `durationMs`, `model`, `sessionId`, `totalCostUsd`, token breakdown
+- Rich tool descriptions with capability summaries, cost guidance, and prompt tips
+- `listSessions` tool: list active sessions with cumulative cost, turn counts, and timing
+- Session tracking: in-memory `SessionStore` with TTL (24h) and LRU eviction (100 sessions)
+- Cumulative cost tracking across session turns
+- `resetSession` parameter on query tool to clear session state before execution
+- Progress heartbeat notifications (`notifications/progress`) for query, review, and search tools
+- 166 tests (up from 91)
+
 ## [0.2.0] - 2026-04-08
 
 ### Added

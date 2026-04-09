@@ -25,6 +25,7 @@ Prompts are assembled in TypeScript and spawned via the CLI in `--bare` mode. Th
 | `review` | Agentic repo-aware code review (Claude explores repo with Read/Grep/Glob/git) | 300s (agentic) / 120s (quick) |
 | `search` | Web search via Claude CLI WebSearch/WebFetch tools | 120s |
 | `structured` | JSON Schema validated output via `--json-schema` | 60s |
+| `listSessions` | List active sessions with cumulative cost and turn counts | instant |
 | `ping` | Health check + CLI capability detection | 10s |
 
 ### Review Tool Details
@@ -91,6 +92,21 @@ npm run smoke -- ping                    # health check
 ### Model Fallback
 - On quota exhaustion, auto-retries with fallback model (default: `haiku`)
 - Configurable via `CLAUDE_FALLBACK_MODEL`, set to `none` to disable
+
+### Response Metadata (`_meta`)
+Every tool response includes `_meta` with execution metadata:
+- `durationMs`, `model`, `sessionId`, `totalCostUsd`
+- Token breakdown: `inputTokens`, `outputTokens`, `cacheReadTokens`
+- `timedOut: true` when subprocess exceeded timeout
+
+### Tool Annotations
+All tools declare MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) in `src/annotations.ts`. query, review, search, and structured are `readOnlyHint: false` because they can persist Claude CLI session state to disk (`~/.claude/`) when a `sessionId` is used. `listSessions` and `ping` are `readOnlyHint: true`.
+
+### Session Tracking
+In-memory `SessionStore` (TTL 24h, LRU eviction at 100) tracks cumulative cost, turn counts, and timing. `listSessions` tool exposes session state. `resetSession` parameter on query clears stored state before execution.
+
+### Progress Heartbeats
+Query, review, and search handlers emit MCP `notifications/progress` every 15s during subprocess execution when the client provides a `progressToken` in `_meta`. Fire-and-forget (silent on unsupported clients). Implemented in `src/utils/progress.ts`.
 
 ## Configuration
 
