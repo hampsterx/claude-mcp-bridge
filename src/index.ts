@@ -10,6 +10,14 @@ import { executeSearch } from "./tools/search.js";
 import { executePing } from "./tools/ping.js";
 import { executeStructured } from "./tools/structured.js";
 import { getErrorMessage } from "./utils/errors.js";
+import { buildMeta } from "./utils/meta.js";
+import {
+  queryAnnotations,
+  reviewAnnotations,
+  searchAnnotations,
+  structuredAnnotations,
+  pingAnnotations,
+} from "./annotations.js";
 
 const require = createRequire(import.meta.url);
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
@@ -19,118 +27,148 @@ const server = new McpServer({
   version: PKG_VERSION,
 });
 
-function appendMeta(base: string, meta: string[]): string {
-  return meta.length > 0 ? `${base}\n\n---\n${meta.join("\n")}` : base;
-}
+// --- query tool ---
 
-server.tool(
+server.registerTool(
   "query",
-  "Execute a prompt via Claude Code CLI with optional file context and session resume.",
   {
-    prompt: z.string().describe("The prompt to send to Claude"),
-    files: z
-      .array(z.string())
-      .optional()
-      .describe("File paths (text or images) relative to workingDirectory"),
-    model: z.string().optional().describe("Model alias or full Claude model name"),
-    sessionId: z
-      .string()
-      .optional()
-      .describe("Claude session ID to resume with --resume"),
-    noSessionPersistence: z
-      .boolean()
-      .optional()
-      .describe("Disable session persistence for ephemeral print calls"),
-    workingDirectory: z
-      .string()
-      .optional()
-      .describe("Working directory for file resolution and CLI execution"),
-    timeout: z
-      .number()
-      .optional()
-      .describe("Timeout in milliseconds (default: 60000, image queries: 120000)"),
-    maxResponseLength: z
-      .number()
-      .int()
-      .positive()
-      .optional()
-      .describe("Soft limit on response length in words"),
-    maxBudgetUsd: z
-      .number()
-      .positive()
-      .optional()
-      .describe("Maximum cost budget in USD for this call (passed to --max-budget-usd)"),
-    effort: z
-      .string()
-      .optional()
-      .describe("Effort level: low, medium, high, or max (passed to --effort)"),
+    title: "Claude Query",
+    description: "Execute a prompt via Claude Code CLI with optional file context and session resume.",
+    inputSchema: {
+      prompt: z.string().describe("The prompt to send to Claude"),
+      files: z
+        .array(z.string())
+        .optional()
+        .describe("File paths (text or images) relative to workingDirectory"),
+      model: z.string().optional().describe("Model alias or full Claude model name"),
+      sessionId: z
+        .string()
+        .optional()
+        .describe("Claude session ID to resume with --resume"),
+      noSessionPersistence: z
+        .boolean()
+        .optional()
+        .describe("Disable session persistence for ephemeral print calls"),
+      workingDirectory: z
+        .string()
+        .optional()
+        .describe("Working directory for file resolution and CLI execution"),
+      timeout: z
+        .number()
+        .optional()
+        .describe("Timeout in milliseconds (default: 60000, image queries: 120000)"),
+      maxResponseLength: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Soft limit on response length in words"),
+      maxBudgetUsd: z
+        .number()
+        .positive()
+        .optional()
+        .describe("Maximum cost budget in USD for this call (passed to --max-budget-usd)"),
+      effort: z
+        .string()
+        .optional()
+        .describe("Effort level: low, medium, high, or max (passed to --effort)"),
+    },
+    annotations: queryAnnotations,
   },
   async (input) => {
+    const start = Date.now();
     try {
       const result = await executeQuery(input);
-      const meta: string[] = [];
-      if (result.filesIncluded.length > 0) meta.push(`Files included: ${result.filesIncluded.join(", ")}`);
-      if (result.imagesIncluded.length > 0) meta.push(`Images included: ${result.imagesIncluded.join(", ")}`);
-      if (result.filesSkipped.length > 0) meta.push(`Files skipped: ${result.filesSkipped.join(", ")}`);
-      if (result.model) meta.push(`Model: ${result.model}`);
-      if (result.sessionId) meta.push(`Session: ${result.sessionId}`);
-      if (typeof result.totalCostUsd === "number") meta.push(`Cost USD: ${result.totalCostUsd}`);
-      if (result.timedOut) meta.push("(timed out)");
+
+      const textMeta: string[] = [];
+      if (result.filesIncluded.length > 0) textMeta.push(`Files included: ${result.filesIncluded.join(", ")}`);
+      if (result.imagesIncluded.length > 0) textMeta.push(`Images included: ${result.imagesIncluded.join(", ")}`);
+      if (result.filesSkipped.length > 0) textMeta.push(`Files skipped: ${result.filesSkipped.join(", ")}`);
+      if (result.timedOut) textMeta.push("(timed out)");
+
+      const text = textMeta.length > 0
+        ? `${result.response}\n\n---\n${textMeta.join("\n")}`
+        : result.response;
 
       return {
-        content: [{ type: "text", text: appendMeta(result.response, meta) }],
+        content: [{ type: "text" as const, text }],
+        _meta: buildMeta({
+          durationMs: Date.now() - start,
+          model: result.model,
+          sessionId: result.sessionId,
+          totalCostUsd: result.totalCostUsd,
+          usage: result.usage,
+          timedOut: result.timedOut,
+        }),
       };
     } catch (e) {
       console.error("[query]", e);
       return {
-        content: [{ type: "text", text: `Error: ${getErrorMessage(e)}` }],
+        content: [{ type: "text" as const, text: `Error: ${getErrorMessage(e)}` }],
         isError: true,
+        _meta: buildMeta({ durationMs: Date.now() - start }),
       };
     }
   },
 );
 
-server.tool(
+// --- structured tool ---
+
+server.registerTool(
   "structured",
-  "Generate JSON that conforms to a provided JSON Schema using Claude CLI native schema validation.",
   {
-    prompt: z.string().describe("What to generate or extract"),
-    schema: z.string().describe("JSON Schema as a JSON string"),
-    files: z
-      .array(z.string())
-      .optional()
-      .describe("Text file paths to include as context"),
-    model: z.string().optional().describe("Model alias or full Claude model name"),
-    sessionId: z
-      .string()
-      .optional()
-      .describe("Claude session ID to resume with --resume"),
-    noSessionPersistence: z
-      .boolean()
-      .optional()
-      .describe("Disable session persistence for ephemeral print calls"),
-    workingDirectory: z
-      .string()
-      .optional()
-      .describe("Working directory for file resolution and CLI execution"),
-    timeout: z
-      .number()
-      .optional()
-      .describe("Timeout in milliseconds (default: 60000)"),
-    maxBudgetUsd: z
-      .number()
-      .positive()
-      .optional()
-      .describe("Maximum cost budget in USD for this call (passed to --max-budget-usd)"),
+    title: "Structured Output",
+    description: "Generate JSON that conforms to a provided JSON Schema using Claude CLI native schema validation.",
+    inputSchema: {
+      prompt: z.string().describe("What to generate or extract"),
+      schema: z.string().describe("JSON Schema as a JSON string"),
+      files: z
+        .array(z.string())
+        .optional()
+        .describe("Text file paths to include as context"),
+      model: z.string().optional().describe("Model alias or full Claude model name"),
+      sessionId: z
+        .string()
+        .optional()
+        .describe("Claude session ID to resume with --resume"),
+      noSessionPersistence: z
+        .boolean()
+        .optional()
+        .describe("Disable session persistence for ephemeral print calls"),
+      workingDirectory: z
+        .string()
+        .optional()
+        .describe("Working directory for file resolution and CLI execution"),
+      timeout: z
+        .number()
+        .optional()
+        .describe("Timeout in milliseconds (default: 60000)"),
+      maxBudgetUsd: z
+        .number()
+        .positive()
+        .optional()
+        .describe("Maximum cost budget in USD for this call (passed to --max-budget-usd)"),
+    },
+    annotations: structuredAnnotations,
   },
   async (input) => {
+    const start = Date.now();
     try {
       const result = await executeStructured(input);
+      const meta = buildMeta({
+        durationMs: Date.now() - start,
+        model: result.model,
+        sessionId: result.sessionId,
+        totalCostUsd: result.totalCostUsd,
+        usage: result.usage,
+        timedOut: result.timedOut,
+      });
 
       if (!result.valid) {
         return {
-          content: [{ type: "text", text: `Error: ${result.errors ?? "Invalid response"}` }],
+          content: [{ type: "text" as const, text: `Error: ${result.errors ?? "Invalid response"}` }],
           isError: true,
+          _meta: meta,
         };
       }
 
@@ -138,111 +176,147 @@ server.tool(
         { type: "text", text: result.response },
       ];
 
-      const meta: string[] = [];
-      if (result.filesIncluded.length > 0) meta.push(`Files: ${result.filesIncluded.join(", ")}`);
-      if (result.model) meta.push(`Model: ${result.model}`);
-      if (result.sessionId) meta.push(`Session: ${result.sessionId}`);
-      if (typeof result.totalCostUsd === "number") meta.push(`Cost USD: ${result.totalCostUsd}`);
-      if (result.timedOut) meta.push("(timed out)");
-      if (meta.length > 0) {
-        content.push({ type: "text", text: meta.join("\n") });
+      const textMeta: string[] = [];
+      if (result.filesIncluded.length > 0) textMeta.push(`Files: ${result.filesIncluded.join(", ")}`);
+      if (result.timedOut) textMeta.push("(timed out)");
+      if (textMeta.length > 0) {
+        content.push({ type: "text", text: textMeta.join("\n") });
       }
 
-      return { content };
+      return { content, _meta: meta };
     } catch (e) {
       console.error("[structured]", e);
       return {
-        content: [{ type: "text", text: `Error: ${getErrorMessage(e)}` }],
+        content: [{ type: "text" as const, text: `Error: ${getErrorMessage(e)}` }],
         isError: true,
+        _meta: buildMeta({ durationMs: Date.now() - start }),
       };
     }
   },
 );
 
-server.tool(
+// --- review tool ---
+
+server.registerTool(
   "review",
-  "Repo-aware code review. Quick mode reviews a precomputed diff. Agentic mode explores changed files with a narrow Claude tool allowlist.",
   {
-    uncommitted: z.boolean().optional().describe("Review uncommitted changes. Default: true"),
-    base: z.string().optional().describe("Base branch/ref to diff against. Overrides uncommitted."),
-    focus: z.string().optional().describe("Optional review focus area"),
-    quick: z.boolean().optional().describe("Use diff-only quick review mode"),
-    model: z.string().optional().describe("Model alias or full Claude model name"),
-    sessionId: z.string().optional().describe("Claude session ID to resume with --resume"),
-    noSessionPersistence: z.boolean().optional().describe("Disable session persistence for ephemeral print calls"),
-    workingDirectory: z.string().optional().describe("Repository directory"),
-    timeout: z.number().optional().describe("Timeout in milliseconds"),
-    maxResponseLength: z.number().int().positive().optional().describe("Soft limit on response length in words"),
-    maxBudgetUsd: z.number().positive().optional().describe("Maximum cost budget in USD for this call (passed to --max-budget-usd)"),
-    effort: z.string().optional().describe("Effort level: low, medium, high, or max (default: high for agentic)"),
+    title: "Code Review",
+    description: "Repo-aware code review. Quick mode reviews a precomputed diff. Agentic mode explores changed files with a narrow Claude tool allowlist.",
+    inputSchema: {
+      uncommitted: z.boolean().optional().describe("Review uncommitted changes. Default: true"),
+      base: z.string().optional().describe("Base branch/ref to diff against. Overrides uncommitted."),
+      focus: z.string().optional().describe("Optional review focus area"),
+      quick: z.boolean().optional().describe("Use diff-only quick review mode"),
+      model: z.string().optional().describe("Model alias or full Claude model name"),
+      sessionId: z.string().optional().describe("Claude session ID to resume with --resume"),
+      noSessionPersistence: z.boolean().optional().describe("Disable session persistence for ephemeral print calls"),
+      workingDirectory: z.string().optional().describe("Repository directory"),
+      timeout: z.number().optional().describe("Timeout in milliseconds"),
+      maxResponseLength: z.number().int().positive().optional().describe("Soft limit on response length in words"),
+      maxBudgetUsd: z.number().positive().optional().describe("Maximum cost budget in USD for this call (passed to --max-budget-usd)"),
+      effort: z.string().optional().describe("Effort level: low, medium, high, or max (default: high for agentic)"),
+    },
+    annotations: reviewAnnotations,
   },
   async (input) => {
+    const start = Date.now();
     try {
       const result = await executeReview(input);
-      const meta: string[] = [
+
+      const textMeta: string[] = [
         `Diff source: ${result.diffSource}`,
         `Mode: ${result.mode}`,
       ];
-      if (result.base) meta.push(`Base: ${result.base}`);
-      if (result.model) meta.push(`Model: ${result.model}`);
-      if (result.sessionId) meta.push(`Session: ${result.sessionId}`);
-      if (typeof result.totalCostUsd === "number") meta.push(`Cost USD: ${result.totalCostUsd}`);
-      if (result.timedOut) meta.push("(timed out)");
+      if (result.base) textMeta.push(`Base: ${result.base}`);
+      if (result.timedOut) textMeta.push("(timed out)");
+
+      const text = `${result.response}\n\n---\n${textMeta.join("\n")}`;
 
       return {
-        content: [{ type: "text", text: appendMeta(result.response, meta) }],
+        content: [{ type: "text" as const, text }],
+        _meta: buildMeta({
+          durationMs: Date.now() - start,
+          model: result.model,
+          sessionId: result.sessionId,
+          totalCostUsd: result.totalCostUsd,
+          usage: result.usage,
+          timedOut: result.timedOut,
+        }),
       };
     } catch (e) {
       console.error("[review]", e);
       return {
-        content: [{ type: "text", text: `Error: ${getErrorMessage(e)}` }],
+        content: [{ type: "text" as const, text: `Error: ${getErrorMessage(e)}` }],
         isError: true,
+        _meta: buildMeta({ durationMs: Date.now() - start }),
       };
     }
   },
 );
 
-server.tool(
+// --- search tool ---
+
+server.registerTool(
   "search",
-  "Web search via Claude Code CLI using WebSearch and WebFetch.",
   {
-    query: z.string().describe("Search query or question"),
-    model: z.string().optional().describe("Model alias or full Claude model name"),
-    sessionId: z.string().optional().describe("Claude session ID to resume with --resume"),
-    noSessionPersistence: z.boolean().optional().describe("Disable session persistence for ephemeral print calls"),
-    workingDirectory: z.string().optional().describe("Working directory for the CLI"),
-    timeout: z.number().optional().describe("Timeout in milliseconds"),
-    maxResponseLength: z.number().int().positive().optional().describe("Soft limit on response length in words"),
-    maxBudgetUsd: z.number().positive().optional().describe("Maximum cost budget in USD for this call (passed to --max-budget-usd)"),
-    effort: z.string().optional().describe("Effort level: low, medium, high, or max (default: medium for search)"),
+    title: "Web Search",
+    description: "Web search via Claude Code CLI using WebSearch and WebFetch.",
+    inputSchema: {
+      query: z.string().describe("Search query or question"),
+      model: z.string().optional().describe("Model alias or full Claude model name"),
+      sessionId: z.string().optional().describe("Claude session ID to resume with --resume"),
+      noSessionPersistence: z.boolean().optional().describe("Disable session persistence for ephemeral print calls"),
+      workingDirectory: z.string().optional().describe("Working directory for the CLI"),
+      timeout: z.number().optional().describe("Timeout in milliseconds"),
+      maxResponseLength: z.number().int().positive().optional().describe("Soft limit on response length in words"),
+      maxBudgetUsd: z.number().positive().optional().describe("Maximum cost budget in USD for this call (passed to --max-budget-usd)"),
+      effort: z.string().optional().describe("Effort level: low, medium, high, or max (default: medium for search)"),
+    },
+    annotations: searchAnnotations,
   },
   async (input) => {
+    const start = Date.now();
     try {
       const result = await executeSearch(input);
-      const meta: string[] = [];
-      if (result.model) meta.push(`Model: ${result.model}`);
-      if (result.sessionId) meta.push(`Session: ${result.sessionId}`);
-      if (typeof result.totalCostUsd === "number") meta.push(`Cost USD: ${result.totalCostUsd}`);
-      if (result.timedOut) meta.push("(timed out)");
+
+      const text = result.timedOut
+        ? `${result.response}\n\n---\n(timed out)`
+        : result.response;
 
       return {
-        content: [{ type: "text", text: appendMeta(result.response, meta) }],
+        content: [{ type: "text" as const, text }],
+        _meta: buildMeta({
+          durationMs: Date.now() - start,
+          model: result.model,
+          sessionId: result.sessionId,
+          totalCostUsd: result.totalCostUsd,
+          usage: result.usage,
+          timedOut: result.timedOut,
+        }),
       };
     } catch (e) {
       console.error("[search]", e);
       return {
-        content: [{ type: "text", text: `Error: ${getErrorMessage(e)}` }],
+        content: [{ type: "text" as const, text: `Error: ${getErrorMessage(e)}` }],
         isError: true,
+        _meta: buildMeta({ durationMs: Date.now() - start }),
       };
     }
   },
 );
 
-server.tool(
+// --- ping tool ---
+
+server.registerTool(
   "ping",
-  "Check whether Claude CLI is installed and what auth method is available (API key or subscription).",
-  {},
+  {
+    title: "Health Check",
+    description: "Check whether Claude CLI is installed and what auth method is available (API key or subscription).",
+    inputSchema: {},
+    annotations: pingAnnotations,
+  },
   async () => {
+    const start = Date.now();
     try {
       const result = await executePing();
       const lines = [
@@ -258,16 +332,22 @@ server.tool(
         `capabilities: bareMode=${result.capabilities.bareMode}, jsonOutput=${result.capabilities.jsonOutput}, jsonSchema=${result.capabilities.jsonSchema}, sessionResume=${result.capabilities.sessionResume}`,
       ];
 
-      return { content: [{ type: "text", text: lines.join("\n") }] };
+      return {
+        content: [{ type: "text" as const, text: lines.join("\n") }],
+        _meta: buildMeta({ durationMs: Date.now() - start }),
+      };
     } catch (e) {
       console.error("[ping]", e);
       return {
-        content: [{ type: "text", text: `Error: ${getErrorMessage(e)}` }],
+        content: [{ type: "text" as const, text: `Error: ${getErrorMessage(e)}` }],
         isError: true,
+        _meta: buildMeta({ durationMs: Date.now() - start }),
       };
     }
   },
 );
+
+// --- Start server ---
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
