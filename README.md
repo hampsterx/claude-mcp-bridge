@@ -203,6 +203,25 @@ Web search via Claude Code CLI using WebSearch and WebFetch tools.
 | `maxBudgetUsd` | number | | Cost cap in USD |
 | `effort` | string | `medium` | `low`, `medium`, `high`, or `max` |
 
+### `listSessions`
+
+List active Claude CLI sessions tracked by this server. Returns session metadata for orchestration.
+
+```json
+[
+  {
+    "sessionId": "abc-123",
+    "model": "sonnet",
+    "createdAt": 1712700000000,
+    "lastUsedAt": 1712703600000,
+    "turnCount": 5,
+    "totalCostUsd": 0.23
+  }
+]
+```
+
+No parameters. Sessions are stored in-memory (TTL 24h, LRU eviction at 100). Use to check available sessions before resuming with `sessionId`.
+
 ### `ping`
 
 Health check. No parameters. Returns CLI availability, auth status, configured models, server version, and capability flags.
@@ -295,6 +314,37 @@ CLI output is scanned for sensitive patterns before being returned: Anthropic AP
 | Max JSON Schema size | 20 KB |
 | Hard timeout cap | 10 minutes |
 | Concurrency queue timeout | 30 seconds |
+
+## Response metadata
+
+Every tool response includes a `_meta` object with execution metadata:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `durationMs` | number | Wall-clock execution time |
+| `model` | string? | Model used (e.g. "sonnet", "opus") |
+| `sessionId` | string? | Session ID for resume |
+| `totalCostUsd` | number? | Cost for this call in USD |
+| `inputTokens` | number? | Input tokens consumed |
+| `outputTokens` | number? | Output tokens generated |
+| `cacheReadTokens` | number? | Tokens read from prompt cache |
+| `timedOut` | boolean? | `true` if subprocess exceeded timeout (omitted otherwise) |
+
+All tools also declare [MCP annotations](https://modelcontextprotocol.io/specification/2025-06-18/server/tools#annotations) (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so clients can make informed permission and safety decisions.
+
+## Sessions
+
+Session state is tracked in-memory across calls. When a tool returns a `sessionId` in `_meta`, pass it back on subsequent calls to resume the conversation via Claude CLI's `--resume` flag.
+
+- **Cumulative cost**: `totalCostUsd` in `_meta` is the cost for that call only. Cumulative cost across turns is tracked per-session and visible via `listSessions`
+- **Reset**: Pass `resetSession: true` on the query tool to clear stored state and start fresh
+- **TTL**: Sessions expire after 24 hours of inactivity
+- **Capacity**: LRU eviction at 100 sessions (oldest by `lastUsedAt` is evicted)
+- **Ephemeral**: Session state is in-memory only, lost on server restart
+
+## Progress notifications
+
+Query, review, and search tools emit MCP [`notifications/progress`](https://modelcontextprotocol.io/specification/2025-06-18/server/utilities/progress) during subprocess execution when the client provides a `progressToken` in the request's `_meta`. Heartbeats fire every 15 seconds with elapsed time. Notifications are fire-and-forget; clients that don't support progress notifications are unaffected.
 
 ## Concurrency
 

@@ -1,6 +1,6 @@
 {
   "name": "claude-mcp-bridge",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MCP server that wraps Claude Code CLI for query, structured output, and health checks",
   "author": "Tim Birrell",
   "license": "MIT",
