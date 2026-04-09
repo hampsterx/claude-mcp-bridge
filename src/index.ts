@@ -18,6 +18,13 @@ import {
   structuredAnnotations,
   pingAnnotations,
 } from "./annotations.js";
+import {
+  queryDescription,
+  reviewDescription,
+  searchDescription,
+  structuredDescription,
+  pingDescription,
+} from "./descriptions.js";
 
 const require = createRequire(import.meta.url);
 const { version: PKG_VERSION } = require("../package.json") as { version: string };
@@ -33,7 +40,7 @@ server.registerTool(
   "query",
   {
     title: "Claude Query",
-    description: "Execute a prompt via Claude Code CLI with optional file context and session resume.",
+    description: queryDescription,
     inputSchema: {
       prompt: z.string().describe("The prompt to send to Claude"),
       files: z
@@ -118,7 +125,7 @@ server.registerTool(
   "structured",
   {
     title: "Structured Output",
-    description: "Generate JSON that conforms to a provided JSON Schema using Claude CLI native schema validation.",
+    description: structuredDescription,
     inputSchema: {
       prompt: z.string().describe("What to generate or extract"),
       schema: z.string().describe("JSON Schema as a JSON string"),
@@ -201,7 +208,7 @@ server.registerTool(
   "review",
   {
     title: "Code Review",
-    description: "Repo-aware code review. Quick mode reviews a precomputed diff. Agentic mode explores changed files with a narrow Claude tool allowlist.",
+    description: reviewDescription,
     inputSchema: {
       uncommitted: z.boolean().optional().describe("Review uncommitted changes. Default: true"),
       base: z.string().optional().describe("Base branch/ref to diff against. Overrides uncommitted."),
@@ -260,7 +267,7 @@ server.registerTool(
   "search",
   {
     title: "Web Search",
-    description: "Web search via Claude Code CLI using WebSearch and WebFetch.",
+    description: searchDescription,
     inputSchema: {
       query: z.string().describe("Search query or question"),
       model: z.string().optional().describe("Model alias or full Claude model name"),
@@ -311,7 +318,7 @@ server.registerTool(
   "ping",
   {
     title: "Health Check",
-    description: "Check whether Claude CLI is installed and what auth method is available (API key or subscription).",
+    description: pingDescription,
     inputSchema: {},
     annotations: pingAnnotations,
   },
