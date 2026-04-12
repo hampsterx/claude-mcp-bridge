@@ -1,0 +1,34 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      # OIDC trusted publishing requires npm >= 11.5.1. Node 22 ships with
+      # npm 10, so run the publish step via npx --yes npm@latest instead of
+      # touching the global install (self-upgrade races; corepack does not
+      # reroute npm without a packageManager field).
+      - run: npx --yes npm@latest --version
+      - run: npx --yes npm@latest publish --provenance --access public

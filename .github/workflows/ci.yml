@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      - name: Verify package contents
+        run: |
+          npm pack --dry-run 2>&1 | tee /tmp/pack-output.txt
+          test -f dist/index.js || (echo "FAIL: dist/index.js missing" && exit 1)
+          ls prompts/*.md > /dev/null 2>&1 || (echo "FAIL: prompts/ missing" && exit 1)
