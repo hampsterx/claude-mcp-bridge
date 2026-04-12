@@ -1,5 +1,57 @@
 import { execFileSync } from "node:child_process";
 
+export interface DiffStat {
+  files: number;
+  insertions: number;
+  deletions: number;
+}
+
+export type DiffSpec =
+  | { type: "uncommitted" }
+  | { type: "branch"; base: string };
+
+/**
+ * Parse `git diff --numstat` output into aggregate stats.
+ * Binary files show "-" for insertions/deletions; they count as files but contribute 0 lines.
+ */
+export function parseNumstat(output: string): DiffStat {
+  let files = 0;
+  let insertions = 0;
+  let deletions = 0;
+
+  for (const line of output.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const parts = trimmed.split("\t");
+    if (parts.length < 3) continue;
+    files++;
+    const ins = parseInt(parts[0]!, 10);
+    const del = parseInt(parts[1]!, 10);
+    if (!Number.isNaN(ins)) insertions += ins;
+    if (!Number.isNaN(del)) deletions += del;
+  }
+
+  return { files, insertions, deletions };
+}
+
+/**
+ * Get diff stats (file count, insertions, deletions) for a diff spec.
+ * Uses `git diff HEAD --numstat` for uncommitted to avoid double-counting
+ * files with both staged and unstaged changes.
+ */
+export function getDiffStat(cwd: string, spec: DiffSpec): DiffStat {
+  const args = spec.type === "uncommitted"
+    ? ["-C", cwd, "diff", "HEAD", "--numstat"]
+    : ["-C", cwd, "diff", `${spec.base}...HEAD`, "--numstat"];
+
+  const output = execFileSync("git", args, {
+    encoding: "utf8",
+    timeout: 30_000,
+  });
+
+  return parseNumstat(output);
+}
+
 /**
  * Find the git repository root for a given directory.
  * Throws if not inside a git repo.

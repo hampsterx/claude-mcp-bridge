@@ -22,7 +22,7 @@ Prompts are assembled in TypeScript and spawned via the CLI in `--bare` mode. Th
 | Tool | Purpose | Default Timeout |
 |------|---------|----------------|
 | `query` | Execute prompts with file context, session resume, budget control | 60s (text) / 120s (images) |
-| `review` | Agentic repo-aware code review (Claude explores repo with Read/Grep/Glob/git) | 300s (agentic) / 120s (quick) |
+| `review` | Agentic repo-aware code review (Claude explores repo with Read/Grep/Glob/git) | auto-scaled 3-10min (agentic) / 120s (quick) |
 | `search` | Web search via Claude CLI WebSearch/WebFetch tools | 120s |
 | `structured` | JSON Schema validated output via `--json-schema` | 60s |
 | `listSessions` | List active sessions with cumulative cost and turn counts | instant |

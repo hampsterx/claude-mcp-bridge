@@ -274,6 +274,7 @@ server.registerTool(
         `Mode: ${result.mode}`,
       ];
       if (result.base) textMeta.push(`Base: ${result.base}`);
+      if (result.timeoutScaled) textMeta.push("Timeout: auto-scaled");
       if (result.timedOut) textMeta.push("(timed out)");
 
       const text = `${result.response}\n\n---\n${textMeta.join("\n")}`;

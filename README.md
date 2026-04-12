@@ -173,7 +173,7 @@ Repo-aware code review with two modes:
 | `sessionId` | string | | Session ID to resume |
 | `noSessionPersistence` | boolean | | Disable session persistence |
 | `workingDirectory` | string | `cwd` | Repository root |
-| `timeout` | number | 300000 / 120000 | 5min (agentic) or 2min (quick) |
+| `timeout` | number | auto / 120000 | Auto-scaled from diff size (agentic) or 2min (quick) |
 | `maxResponseLength` | number | | Soft limit on response length in words |
 | `maxBudgetUsd` | number | | Cost cap in USD |
 | `effort` | string | `high` | `low`, `medium`, `high`, or `max` |
