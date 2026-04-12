@@ -4,9 +4,11 @@ Security model and hardening measures for claude-mcp-bridge.
 
 ## Environment Isolation
 
-The subprocess receives a strict allowlist of environment variables. Your credentials and tokens are not leaked to the Claude CLI process.
+The subprocess receives a strict allowlist of environment variables. Sensitive credentials are not forwarded unless explicitly opted in.
 
-**Allowed keys**: `ANTHROPIC_API_KEY`, `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`, `AWS_REGION`, `AWS_DEFAULT_REGION`, `HOME`, `PATH`, `USER`, `SHELL`, `LANG`, `TERM`, `XDG_CONFIG_HOME`
+**Allowed keys**: `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`, `AWS_REGION`, `AWS_DEFAULT_REGION`, `HOME`, `PATH`, `USER`, `SHELL`, `LANG`, `TERM`, `XDG_CONFIG_HOME`
+
+**Conditional**: `ANTHROPIC_API_KEY` is only forwarded when `CLAUDE_BRIDGE_USE_API_KEY=1` is set. This prevents accidental API credit consumption when subscription auth is available.
 
 **Always set**: `NO_COLOR=1`, `FORCE_COLOR=0`
 
