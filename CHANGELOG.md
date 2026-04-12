@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.3.1] - 2026-04-12
+
+### Added
+
+- Concurrency diagnostics in ping output: `activeCount`, `queueDepth`, `maxConcurrent` from live spawn state
+- Auto-scaled agentic review timeout based on diff size (`git diff --numstat`), ranging 3-10 minutes
+- Bridge family comparison table in README
+
+### Changed
+
+- Ping `maxConcurrent` reads from spawn.ts state instead of re-parsing env var
+- Agentic review timeout defaults to scaled value when no explicit timeout is provided (quick mode unchanged at 120s)
+- 186 tests (up from 166)
+
 ## [0.3.0] - 2026-04-09
 
 ### Added

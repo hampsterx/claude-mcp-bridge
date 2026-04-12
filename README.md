@@ -350,6 +350,28 @@ Query, review, and search tools emit MCP [`notifications/progress`](https://mode
 
 Requests are queued with a FIFO scheduler. Default: 3 concurrent Claude CLI processes. If all slots are busy, new requests wait up to 30 seconds before being rejected. Timed-out processes are killed with SIGTERM, then SIGKILL after 5 seconds. On Unix, the entire process group is killed to clean up child processes.
 
+## Bridge family
+
+Three MCP servers, same architecture, different underlying CLIs. Each wraps a terminal agent as a subprocess and exposes it as MCP tools. Pick the one that matches your model provider, or run multiple for cross-model workflows.
+
+| | [claude-mcp-bridge](https://github.com/hampsterx/claude-mcp-bridge) | [gemini-mcp-bridge](https://github.com/hampsterx/gemini-mcp-bridge) | [codex-mcp-bridge](https://github.com/hampsterx/codex-mcp-bridge) |
+|---|---|---|---|
+| **CLI** | Claude Code | Gemini CLI | Codex CLI |
+| **Provider** | Anthropic | Google | OpenAI |
+| **Tools** | query, review, search, structured, ping, listSessions | query, review, search, structured, ping | codex, review, search, query, structured, ping, listSessions |
+| **Agentic review** | Claude explores repo with Read/Grep/Glob/git | Gemini explores repo with file reads and git | Codex explores repo in full-auto mode |
+| **Structured output** | Native `--json-schema` (no Ajv) | Ajv validation | Ajv validation |
+| **Session resume** | Native `--resume` | Not supported | Session IDs with multi-turn |
+| **Budget caps** | Native `--max-budget-usd` | Not supported | Not supported |
+| **Effort control** | `--effort low/medium/high/max` | Not supported | Not supported |
+| **Cold start** | ~1-2s | ~16s | <100ms (inference dominates) |
+| **Auth** | `claude login` (subscription) or `ANTHROPIC_API_KEY` | `gemini auth login` | `OPENAI_API_KEY` |
+| **Cost** | Subscription (included) or API credits | Free tier available | Pay-per-token |
+| **Concurrency** | 3 (configurable) | 3 (configurable) | 3 (configurable) |
+| **Model fallback** | Auto-retry with fallback model | Not supported | Auto-retry with fallback model |
+
+All three share: subprocess env isolation, path sandboxing, output redaction, FIFO concurrency queue, MCP tool annotations, `_meta` response metadata, progress heartbeats.
+
 ## Development
 
 ```bash
