@@ -1,3 +1,5 @@
+import { redactSecrets } from "./parse.js";
+
 function combinedText(stdout: string, stderr: string): string {
   return [stdout, stderr].filter(Boolean).join("\n").trim();
 }
@@ -22,10 +24,11 @@ export function isRetryableError(exitCode: number | null, stdout: string, stderr
 export function checkErrorPatterns(exitCode: number | null, stdout: string, stderr: string): void {
   if (exitCode === 0) return;
 
-  const text = combinedText(stdout, stderr);
-  if (!text) return;
+  const raw = combinedText(stdout, stderr);
+  if (!raw) return;
 
-  const lower = text.toLowerCase();
+  const lower = raw.toLowerCase();
+  const safe = redactSecrets(raw);
 
   if (
     lower.includes("api key")
@@ -34,7 +37,7 @@ export function checkErrorPatterns(exitCode: number | null, stdout: string, stde
     || lower.includes("forbidden")
   ) {
     throw new Error(
-      `Claude CLI authentication error. Set ANTHROPIC_API_KEY for bare mode.\n\nDetails: ${text}`,
+      `Claude CLI authentication error. Run "claude login" for subscription auth, or set ANTHROPIC_API_KEY + CLAUDE_BRIDGE_USE_API_KEY=1 for API key auth.\n\nDetails: ${safe}`,
     );
   }
 
@@ -45,7 +48,7 @@ export function checkErrorPatterns(exitCode: number | null, stdout: string, stde
     || lower.includes("quota")
     || lower.includes("overloaded")
   ) {
-    throw new Error(`Claude API quota or rate-limit error.\n\nDetails: ${text}`);
+    throw new Error(`Claude API quota or rate-limit error.\n\nDetails: ${safe}`);
   }
 
   if (
@@ -55,7 +58,7 @@ export function checkErrorPatterns(exitCode: number | null, stdout: string, stde
     || lower.includes("network")
     || lower.includes("econnrefused")
   ) {
-    throw new Error(`Claude API connection error.\n\nDetails: ${text}`);
+    throw new Error(`Claude API connection error.\n\nDetails: ${safe}`);
   }
 }
 

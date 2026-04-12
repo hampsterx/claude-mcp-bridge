@@ -50,8 +50,8 @@ npx claude-mcp-bridge
 
 - [Claude Code CLI](https://github.com/anthropics/claude-code) installed and on PATH
 - Authentication (one of):
-  - **Subscription**: `claude login` (uses your Pro/Max plan, no API credits needed)
-  - **API key**: set `ANTHROPIC_API_KEY` (billed per use via console.anthropic.com)
+  - **Subscription** (default): `claude login` (uses your Pro/Max plan, no API credits needed)
+  - **API key**: set `ANTHROPIC_API_KEY` + `CLAUDE_BRIDGE_USE_API_KEY=1` (billed per use via console.anthropic.com)
 
 ### Codex CLI
 
@@ -90,7 +90,8 @@ Add to your MCP settings:
     "command": "npx",
     "args": ["-y", "claude-mcp-bridge"],
     "env": {
-      "ANTHROPIC_API_KEY": "sk-ant-..."
+      "ANTHROPIC_API_KEY": "sk-ant-...",
+      "CLAUDE_BRIDGE_USE_API_KEY": "1"
     }
   }
 }
@@ -165,7 +166,8 @@ Model resolution: explicit parameter > tool-specific env var > `CLAUDE_DEFAULT_M
 | `CLAUDE_MAX_CONCURRENT` | `3` | Max concurrent subprocess spawns |
 | `CLAUDE_CLI_PATH` | `claude` | Path to CLI binary |
 | `CLAUDE_MAX_BUDGET_USD` | | Global cost cap in USD (per call) |
-| `ANTHROPIC_API_KEY` | | API key for bare mode auth |
+| `ANTHROPIC_API_KEY` | | API key (only forwarded when `CLAUDE_BRIDGE_USE_API_KEY=1`) |
+| `CLAUDE_BRIDGE_USE_API_KEY` | | Set to `1` to forward `ANTHROPIC_API_KEY` to the subprocess (default: subscription auth) |
 
 ### Effort
 
@@ -211,14 +213,14 @@ Three MCP servers, same architecture, different underlying CLIs. Each wraps a te
 | **Structured output** | Native `--json-schema` (no Ajv) | Ajv validation | Ajv validation |
 | **Session resume** | Native `--resume` | Not supported | Session IDs with multi-turn |
 | **Budget caps** | Native `--max-budget-usd` | Not supported | Not supported |
-| **Effort control** | `--effort low/medium/high/max` | Not supported | `reasoningEffort` (low/medium/high) |
+| **Effort control** | `--effort low/medium/high/max` | Not supported | Not supported |
 | **Cold start** | ~1-2s | ~16s | <100ms (inference dominates) |
-| **Auth** | `claude login` (subscription) or `ANTHROPIC_API_KEY` | `gemini auth login` | `OPENAI_API_KEY` |
-| **Cost** | Subscription (included) or API credits | Free tier available | Pay-per-token |
+| **Auth** | `claude login` (default) or `ANTHROPIC_API_KEY` + opt-in | `gemini auth login` | `OPENAI_API_KEY` |
+| **Cost** | Subscription (default) or API credits (opt-in) | Free tier available | Pay-per-token |
 | **Concurrency** | 3 (configurable) | 3 (configurable) | 3 (configurable) |
-| **Model fallback** | Auto-retry with fallback model | Auto-retry with fallback model | Auto-retry with fallback model |
+| **Model fallback** | Auto-retry with fallback model | Not supported | Auto-retry with fallback model |
 
-All three share: subprocess env isolation, path sandboxing, FIFO concurrency queue, MCP tool annotations, `_meta` response metadata, progress heartbeats. The codex and claude bridges also perform output redaction (secret stripping).
+All three share: subprocess env isolation, path sandboxing, output redaction, FIFO concurrency queue, MCP tool annotations, `_meta` response metadata, progress heartbeats.
 
 ## Development
 

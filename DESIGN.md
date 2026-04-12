@@ -41,10 +41,10 @@ The bridge supports two auth methods, matching Claude Code CLI:
 
 | Method | Setup | Billing |
 |--------|-------|---------|
-| **Subscription** | `claude login` (OAuth) | Pro/Max plan (included) |
-| **API key** | Set `ANTHROPIC_API_KEY` | Pay-per-use (console.anthropic.com) |
+| **Subscription** (default) | `claude login` (OAuth) | Pro/Max plan (included) |
+| **API key** (opt-in) | Set `ANTHROPIC_API_KEY` + `CLAUDE_BRIDGE_USE_API_KEY=1` | Pay-per-use (console.anthropic.com) |
 
-If `ANTHROPIC_API_KEY` is set, it takes priority over subscription auth. The `ping` tool reports the active auth method.
+Subscription auth is used by default. The API key is only forwarded to the subprocess when `CLAUDE_BRIDGE_USE_API_KEY=1` is set, preventing accidental API credit consumption when both auth methods are available. The `ping` tool reports the active auth method.
 
 ## Model Fallback
 

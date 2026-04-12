@@ -68,7 +68,8 @@ npm run smoke -- ping                    # health check
 
 ### Subprocess Environment (Security Critical)
 - **Explicit env allowlist**, never spread `process.env`
-- Allowed keys: `ANTHROPIC_API_KEY`, `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`, `AWS_REGION`, `AWS_DEFAULT_REGION`, `HOME`, `PATH`, `USER`, `SHELL`, `LANG`, `TERM`, `XDG_CONFIG_HOME`
+- Allowed keys: `CLAUDE_CONFIG_DIR`, `CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX`, `AWS_REGION`, `AWS_DEFAULT_REGION`, `HOME`, `PATH`, `USER`, `SHELL`, `LANG`, `TERM`, `XDG_CONFIG_HOME`
+- Conditional: `ANTHROPIC_API_KEY` only forwarded when `CLAUDE_BRIDGE_USE_API_KEY=1`
 - Always set: `NO_COLOR=1`, `FORCE_COLOR=0`
 
 ### Subprocess Spawning
@@ -128,6 +129,7 @@ Query, review, and search handlers emit MCP `notifications/progress` every 15s d
 | `CLAUDE_MAX_CONCURRENT` | `3` | Max concurrent subprocess spawns |
 | `CLAUDE_CLI_PATH` | `claude` | Path to Claude CLI binary |
 | `CLAUDE_MAX_BUDGET_USD` | | Global cost cap in USD (per call) |
+| `CLAUDE_BRIDGE_USE_API_KEY` | | Set to `1` to forward `ANTHROPIC_API_KEY` (default: subscription auth) |
 
 ## Testing
 

@@ -6,6 +6,7 @@ describe("buildSubprocessEnv", () => {
 
   beforeEach(() => {
     delete process.env["ANTHROPIC_API_KEY"];
+    delete process.env["CLAUDE_BRIDGE_USE_API_KEY"];
     delete process.env["CLAUDE_CONFIG_DIR"];
     delete process.env["CLAUDE_CODE_USE_BEDROCK"];
   });
@@ -20,11 +21,35 @@ describe("buildSubprocessEnv", () => {
     expect(env["FORCE_COLOR"]).toBe("0");
   });
 
-  it("includes Anthropic auth and Claude config keys", () => {
+  it("excludes ANTHROPIC_API_KEY by default (subscription auth)", () => {
     process.env["ANTHROPIC_API_KEY"] = "sk-ant-api-test";
-    process.env["CLAUDE_CONFIG_DIR"] = "/tmp/claude";
+    const env = buildSubprocessEnv();
+    expect(env["ANTHROPIC_API_KEY"]).toBeUndefined();
+  });
+
+  it("includes ANTHROPIC_API_KEY when CLAUDE_BRIDGE_USE_API_KEY=1", () => {
+    process.env["ANTHROPIC_API_KEY"] = "sk-ant-api-test";
+    process.env["CLAUDE_BRIDGE_USE_API_KEY"] = "1";
     const env = buildSubprocessEnv();
     expect(env["ANTHROPIC_API_KEY"]).toBe("sk-ant-api-test");
+  });
+
+  it("does not forward ANTHROPIC_API_KEY for non-1 opt-in values", () => {
+    process.env["ANTHROPIC_API_KEY"] = "sk-ant-api-test";
+    process.env["CLAUDE_BRIDGE_USE_API_KEY"] = "true";
+    const env = buildSubprocessEnv();
+    expect(env["ANTHROPIC_API_KEY"]).toBeUndefined();
+  });
+
+  it("does not include ANTHROPIC_API_KEY when CLAUDE_BRIDGE_USE_API_KEY=1 but key absent", () => {
+    process.env["CLAUDE_BRIDGE_USE_API_KEY"] = "1";
+    const env = buildSubprocessEnv();
+    expect(env["ANTHROPIC_API_KEY"]).toBeUndefined();
+  });
+
+  it("includes Claude config keys", () => {
+    process.env["CLAUDE_CONFIG_DIR"] = "/tmp/claude";
+    const env = buildSubprocessEnv();
     expect(env["CLAUDE_CONFIG_DIR"]).toBe("/tmp/claude");
   });
 
@@ -44,6 +69,7 @@ describe("buildSubprocessEnv", () => {
 
   it("skips empty values", () => {
     process.env["ANTHROPIC_API_KEY"] = "";
+    process.env["CLAUDE_BRIDGE_USE_API_KEY"] = "1";
     const env = buildSubprocessEnv();
     expect(env["ANTHROPIC_API_KEY"]).toBeUndefined();
   });
