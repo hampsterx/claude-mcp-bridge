@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.4.0] - 2026-04-12
+
+### Changed
+
+- **Subscription-first auth**: subprocess no longer forwards `ANTHROPIC_API_KEY` by default. Set `CLAUDE_BRIDGE_USE_API_KEY=1` to opt in to API key auth. Subscription auth (`claude login`) is now the default, preventing accidental API credit consumption.
+- Error messages in `checkErrorPatterns` now redacted via `redactSecrets()` before being thrown, preventing secret leakage in error paths
+- 190 tests (up from 186)
+
+### Added
+
+- `CLAUDE_BRIDGE_USE_API_KEY` env var for explicit API key auth opt-in
+- Extracted DESIGN.md and SECURITY.md from README for better navigation
+
 ## [0.3.1] - 2026-04-12
 
 ### Added
