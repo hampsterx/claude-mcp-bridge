@@ -173,6 +173,15 @@ function killProcessGroup(child: ChildProcess): NodeJS.Timeout | undefined {
   return setTimeout(() => kill("SIGKILL"), 5000);
 }
 
+/** Current number of active subprocess slots in use. */
+export function getActiveCount(): number { return activeCount; }
+
+/** Number of callers waiting for a concurrency slot. */
+export function getQueueDepth(): number { return waitQueue.length; }
+
+/** Resolved max-concurrent value (from env or default). */
+export function getMaxConcurrent(): number { return maxConcurrent; }
+
 export function resetConcurrency(): void {
   activeCount = 0;
   waitQueue.length = 0;
