@@ -274,6 +274,7 @@ server.registerTool(
         `Mode: ${result.mode}`,
       ];
       if (result.base) textMeta.push(`Base: ${result.base}`);
+      if (result.timeoutScaled) textMeta.push("Timeout: auto-scaled");
       if (result.timedOut) textMeta.push("(timed out)");
 
       const text = `${result.response}\n\n---\n${textMeta.join("\n")}`;
@@ -408,6 +409,8 @@ server.registerTool(
         `serverVersion: ${result.serverVersion}`,
         `nodeVersion: ${result.nodeVersion}`,
         `maxConcurrent: ${result.maxConcurrent}`,
+        `activeCount: ${result.activeCount}`,
+        `queueDepth: ${result.queueDepth}`,
         `capabilities: bareMode=${result.capabilities.bareMode}, jsonOutput=${result.capabilities.jsonOutput}, jsonSchema=${result.capabilities.jsonSchema}, sessionResume=${result.capabilities.sessionResume}`,
       ];
 

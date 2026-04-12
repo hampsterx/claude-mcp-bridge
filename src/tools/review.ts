@@ -2,7 +2,7 @@ import { spawnClaude, buildClaudeArgs, HARD_TIMEOUT_CAP } from "../utils/spawn.j
 import { parseClaudeOutput, tryParsePartial, type ClaudeUsage } from "../utils/parse.js";
 import { checkErrorPatterns, throwIfClaudeError } from "../utils/errors.js";
 import { loadPrompt, buildLengthLimit } from "../utils/prompts.js";
-import { getGitRoot, getUncommittedDiff, getBranchDiff } from "../utils/git.js";
+import { getGitRoot, getUncommittedDiff, getBranchDiff, getDiffStat, type DiffStat } from "../utils/git.js";
 import { verifyDirectory } from "../utils/security.js";
 import { resolveModel, getFallbackModel, resolveEffort, resolveMaxBudget } from "../utils/model.js";
 
@@ -30,11 +30,14 @@ export interface ReviewResult {
   sessionId?: string;
   totalCostUsd?: number;
   usage?: ClaudeUsage;
+  timeoutScaled: boolean;
   timedOut: boolean;
   resolvedCwd: string;
 }
 
-const AGENTIC_TIMEOUT = 300_000;
+const AGENTIC_FALLBACK_TIMEOUT = 300_000;
+const AGENTIC_BASE_MS = 180_000;
+const AGENTIC_PER_FILE_MS = 30_000;
 const QUICK_TIMEOUT = 120_000;
 const REVIEW_ALLOWED_TOOLS = [
   "Read",
@@ -62,22 +65,53 @@ export function buildQuickPrompt(diff: string, focus?: string, maxResponseLength
   });
 }
 
+/**
+ * Scale agentic review timeout based on diff size.
+ * Base budget covers CLI cold start + small-diff review.
+ * Each additional file adds budget for tool calls (Read, Grep, etc).
+ * Capped at HARD_TIMEOUT_CAP.
+ */
+export function scaleAgenticTimeout(stat: DiffStat): number {
+  return Math.min(AGENTIC_BASE_MS + AGENTIC_PER_FILE_MS * stat.files, HARD_TIMEOUT_CAP);
+}
+
 export async function executeReview(input: ReviewInput): Promise<ReviewResult> {
   const { uncommitted = true, base, focus, quick = false, maxResponseLength, maxBudgetUsd, effort } = input;
   const model = resolveModel("review", input.model);
-  const defaultTimeout = quick ? QUICK_TIMEOUT : AGENTIC_TIMEOUT;
-  const timeout = Math.min(input.timeout ?? defaultTimeout, HARD_TIMEOUT_CAP);
 
   const requestedDir = input.workingDirectory
     ? await verifyDirectory(input.workingDirectory)
     : process.cwd();
   const cwd = getGitRoot(requestedDir);
 
-  if (quick) {
-    return executeQuickReview({ cwd, uncommitted, base, focus, model, timeout, maxResponseLength, sessionId: input.sessionId, noSessionPersistence: input.noSessionPersistence, maxBudgetUsd, effort });
+  // Validate base ref early — before any git commands use it.
+  // Security-critical: prevents argument injection into git commands.
+  if (base && (base.startsWith("-") || base.includes("..") || base.includes("@{") || !/^[\w./-]+$/.test(base))) {
+    throw new Error(`Invalid base ref: "${base}" — must be a valid git ref (alphanumeric, -, _, /, .)`);
   }
 
-  return executeAgenticReview({ cwd, uncommitted, base, focus, model, timeout, maxResponseLength, sessionId: input.sessionId, noSessionPersistence: input.noSessionPersistence, maxBudgetUsd, effort });
+  if (quick) {
+    const timeout = Math.min(input.timeout ?? QUICK_TIMEOUT, HARD_TIMEOUT_CAP);
+    return executeQuickReview({ cwd, uncommitted, base, focus, model, timeout, timeoutScaled: false, maxResponseLength, sessionId: input.sessionId, noSessionPersistence: input.noSessionPersistence, maxBudgetUsd, effort });
+  }
+
+  // Auto-scale agentic timeout from diff size when no explicit timeout given
+  let timeout: number;
+  let timeoutScaled = false;
+  if (input.timeout != null) {
+    timeout = Math.min(input.timeout, HARD_TIMEOUT_CAP);
+  } else {
+    try {
+      const spec = base ? { type: "branch" as const, base } : { type: "uncommitted" as const };
+      const stat = getDiffStat(cwd, spec);
+      timeout = scaleAgenticTimeout(stat);
+      timeoutScaled = true;
+    } catch {
+      timeout = AGENTIC_FALLBACK_TIMEOUT;
+    }
+  }
+
+  return executeAgenticReview({ cwd, uncommitted, base, focus, model, timeout, timeoutScaled, maxResponseLength, sessionId: input.sessionId, noSessionPersistence: input.noSessionPersistence, maxBudgetUsd, effort });
 }
 
 interface InternalReviewInput {
@@ -87,6 +121,7 @@ interface InternalReviewInput {
   focus?: string;
   model?: string;
   timeout: number;
+  timeoutScaled: boolean;
   maxResponseLength?: number;
   sessionId?: string;
   noSessionPersistence?: boolean;
@@ -95,15 +130,14 @@ interface InternalReviewInput {
 }
 
 async function executeAgenticReview(input: InternalReviewInput): Promise<ReviewResult> {
-  const { cwd, uncommitted, base, focus, model, timeout, maxResponseLength, sessionId, noSessionPersistence, maxBudgetUsd, effort } = input;
+  const { cwd, uncommitted, base, focus, model, timeout, timeoutScaled, maxResponseLength, sessionId, noSessionPersistence, maxBudgetUsd, effort } = input;
 
   let diffSpec: string;
   let diffSource: ReviewResult["diffSource"];
 
   if (base) {
-    // Security-critical: this regex prevents argument injection into git commands.
-    // Without it, a malicious base ref like "-o/tmp/pwned" could be interpreted as a flag.
-    if (!/^[\w./-]+$/.test(base)) {
+    // Security-critical: prevents argument injection into git commands.
+    if (base.startsWith("-") || base.includes("..") || base.includes("@{") || !/^[\w./-]+$/.test(base)) {
       throw new Error(`Invalid base ref: "${base}" — must be a valid git ref (alphanumeric, -, _, /, .)`);
     }
     diffSpec = `git diff ${base}...HEAD -U5`;
@@ -124,6 +158,7 @@ async function executeAgenticReview(input: InternalReviewInput): Promise<ReviewR
         base,
         mode: "agentic",
         model,
+        timeoutScaled: false,
         timedOut: false,
         resolvedCwd: cwd,
       };
@@ -136,6 +171,7 @@ async function executeAgenticReview(input: InternalReviewInput): Promise<ReviewR
         base,
         mode: "agentic",
         model,
+        timeoutScaled: false,
         timedOut: false,
         resolvedCwd: cwd,
       };
@@ -164,6 +200,7 @@ async function executeAgenticReview(input: InternalReviewInput): Promise<ReviewR
       base,
       mode: "agentic",
       model,
+      timeoutScaled,
       timedOut: true,
       resolvedCwd: cwd,
     };
@@ -182,20 +219,21 @@ async function executeAgenticReview(input: InternalReviewInput): Promise<ReviewR
     sessionId: parsed.sessionId,
     totalCostUsd: parsed.totalCostUsd,
     usage: parsed.usage,
+    timeoutScaled,
     timedOut: false,
     resolvedCwd: cwd,
   };
 }
 
 async function executeQuickReview(input: InternalReviewInput): Promise<ReviewResult> {
-  const { cwd, uncommitted, base, focus, model, timeout, maxResponseLength, sessionId, noSessionPersistence, maxBudgetUsd, effort } = input;
+  const { cwd, uncommitted, base, focus, model, timeout, timeoutScaled, maxResponseLength, sessionId, noSessionPersistence, maxBudgetUsd, effort } = input;
 
   let diff: string;
   let diffSource: ReviewResult["diffSource"];
 
   try {
     if (base) {
-      if (!/^[\w./-]+$/.test(base)) {
+      if (base.startsWith("-") || base.includes("..") || base.includes("@{") || !/^[\w./-]+$/.test(base)) {
         throw new Error(`Invalid base ref: "${base}" — must be a valid git ref (alphanumeric, -, _, /, .)`);
       }
       diff = getBranchDiff(cwd, base);
@@ -214,6 +252,7 @@ async function executeQuickReview(input: InternalReviewInput): Promise<ReviewRes
         base,
         mode: "quick",
         model,
+        timeoutScaled,
         timedOut: false,
         resolvedCwd: cwd,
       };
@@ -241,6 +280,7 @@ async function executeQuickReview(input: InternalReviewInput): Promise<ReviewRes
       base,
       mode: "quick",
       model,
+      timeoutScaled,
       timedOut: true,
       resolvedCwd: cwd,
     };
@@ -259,6 +299,7 @@ async function executeQuickReview(input: InternalReviewInput): Promise<ReviewRes
     sessionId: parsed.sessionId,
     totalCostUsd: parsed.totalCostUsd,
     usage: parsed.usage,
+    timeoutScaled,
     timedOut: false,
     resolvedCwd: cwd,
   };

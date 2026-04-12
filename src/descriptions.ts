@@ -22,7 +22,7 @@ Tips:
 
 export const reviewDescription = `Repo-aware code review powered by Claude Code CLI. Returns structured feedback on code changes with two modes:
 
-- Agentic (default): Claude explores the repo with Read, Grep, Glob, and git tools. Reads changed files, follows imports, and examines related code before reviewing. Best for thorough reviews. Default timeout: 5 minutes.
+- Agentic (default): Claude explores the repo with Read, Grep, Glob, and git tools. Reads changed files, follows imports, and examines related code before reviewing. Best for thorough reviews. Default timeout: auto-scaled from diff size (3-10 minutes).
 - Quick (quick: true): Receives only the diff text. Fast single-pass review without repo exploration. Default timeout: 2 minutes.
 
 Cost: Both modes default to Opus (~$0.05-0.15 quick, ~$0.25-0.50 agentic). Override with model parameter. Use maxBudgetUsd to cap cost on large diffs.

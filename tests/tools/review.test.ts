@@ -7,12 +7,14 @@ const {
   getGitRootMock,
   getUncommittedDiffMock,
   getBranchDiffMock,
+  getDiffStatMock,
 } = vi.hoisted(() => ({
   spawnClaudeMock: vi.fn<(options: SpawnOptions) => Promise<SpawnResult>>(),
   verifyDirectoryMock: vi.fn<(dir: string) => Promise<string>>(),
   getGitRootMock: vi.fn<(cwd: string) => string>(),
   getUncommittedDiffMock: vi.fn<(cwd: string, contextLines?: number) => string>(),
   getBranchDiffMock: vi.fn<(cwd: string, base: string, contextLines?: number) => string>(),
+  getDiffStatMock: vi.fn(),
 }));
 
 vi.mock("../../src/utils/spawn.js", async (importOriginal) => {
@@ -32,9 +34,10 @@ vi.mock("../../src/utils/git.js", () => ({
   getGitRoot: getGitRootMock,
   getUncommittedDiff: getUncommittedDiffMock,
   getBranchDiff: getBranchDiffMock,
+  getDiffStat: getDiffStatMock,
 }));
 
-import { executeReview } from "../../src/tools/review.js";
+import { executeReview, scaleAgenticTimeout } from "../../src/tools/review.js";
 
 function jsonResponse(text: string) {
   return {
@@ -52,6 +55,21 @@ function jsonResponse(text: string) {
   };
 }
 
+describe("scaleAgenticTimeout", () => {
+  it("returns base timeout for zero files", () => {
+    expect(scaleAgenticTimeout({ files: 0, insertions: 0, deletions: 0 })).toBe(180_000);
+  });
+
+  it("scales linearly with file count", () => {
+    expect(scaleAgenticTimeout({ files: 1, insertions: 10, deletions: 5 })).toBe(210_000);
+    expect(scaleAgenticTimeout({ files: 5, insertions: 50, deletions: 20 })).toBe(330_000);
+  });
+
+  it("caps at HARD_TIMEOUT_CAP (600s)", () => {
+    expect(scaleAgenticTimeout({ files: 100, insertions: 1000, deletions: 500 })).toBe(600_000);
+  });
+});
+
 describe("executeReview", () => {
   beforeEach(() => {
     spawnClaudeMock.mockReset();
@@ -62,6 +80,7 @@ describe("executeReview", () => {
 
     verifyDirectoryMock.mockResolvedValue("/repo/requested");
     getGitRootMock.mockReturnValue("/repo/root");
+    getDiffStatMock.mockReturnValue({ files: 3, insertions: 50, deletions: 10 });
   });
 
   it("uses allowed-tools agentic review and returns parsed response", async () => {
@@ -122,5 +141,54 @@ describe("executeReview", () => {
     expect(result.mode).toBe("quick");
     expect(result.diffSource).toBe("branch");
     expect(result.base).toBe("main");
+  });
+
+  it("auto-scales agentic timeout from diff stat", async () => {
+    getDiffStatMock.mockReturnValue({ files: 5, insertions: 100, deletions: 20 });
+    getUncommittedDiffMock.mockReturnValue("diff --git a/x b/x");
+    spawnClaudeMock.mockResolvedValue(jsonResponse("review"));
+
+    const result = await executeReview({ uncommitted: true });
+
+    // 180_000 base + 30_000 * 5 files = 330_000
+    const call = spawnClaudeMock.mock.calls[0]![0];
+    expect(call.timeout).toBe(330_000);
+    expect(result.timeoutScaled).toBe(true);
+  });
+
+  it("explicit timeout overrides scaling", async () => {
+    getDiffStatMock.mockReturnValue({ files: 5, insertions: 100, deletions: 20 });
+    getUncommittedDiffMock.mockReturnValue("diff --git a/x b/x");
+    spawnClaudeMock.mockResolvedValue(jsonResponse("review"));
+
+    const result = await executeReview({ uncommitted: true, timeout: 200_000 });
+
+    const call = spawnClaudeMock.mock.calls[0]![0];
+    expect(call.timeout).toBe(200_000);
+    expect(result.timeoutScaled).toBe(false);
+  });
+
+  it("falls back to static default when numstat fails", async () => {
+    getDiffStatMock.mockImplementation(() => { throw new Error("git error"); });
+    getUncommittedDiffMock.mockReturnValue("diff --git a/x b/x");
+    spawnClaudeMock.mockResolvedValue(jsonResponse("review"));
+
+    const result = await executeReview({ uncommitted: true });
+
+    const call = spawnClaudeMock.mock.calls[0]![0];
+    expect(call.timeout).toBe(300_000);
+    expect(result.timeoutScaled).toBe(false);
+  });
+
+  it("quick mode timeout is unaffected by scaling", async () => {
+    getDiffStatMock.mockReturnValue({ files: 20, insertions: 500, deletions: 200 });
+    getUncommittedDiffMock.mockReturnValue("diff --git a/x b/x");
+    spawnClaudeMock.mockResolvedValue(jsonResponse("quick review"));
+
+    const result = await executeReview({ quick: true, uncommitted: true });
+
+    const call = spawnClaudeMock.mock.calls[0]![0];
+    expect(call.timeout).toBe(120_000);
+    expect(result.timeoutScaled).toBe(false);
   });
 });
