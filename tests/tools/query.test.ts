@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
@@ -32,10 +32,17 @@ function jsonResponse(text: string) {
 
 describe("executeQuery", () => {
   let tmpDir: string;
+  const origEnv = { ...process.env };
 
   beforeEach(async () => {
     vi.clearAllMocks();
     tmpDir = await mkdtemp(path.join(os.tmpdir(), "cmb-query-test-"));
+    delete process.env["CLAUDE_BRIDGE_USE_API_KEY"];
+    delete process.env["ANTHROPIC_API_KEY"];
+  });
+
+  afterEach(() => {
+    process.env = { ...origEnv };
   });
 
   it("text-only query uses Claude print mode", async () => {
@@ -54,9 +61,20 @@ describe("executeQuery", () => {
 
     const args = mockSpawn.mock.calls[0][0].args;
     expect(args).toContain("-p");
-    expect(args).toContain("--bare");
     expect(args).toContain("--disable-slash-commands");
+    expect(args).not.toContain("--bare");
     expect(args).not.toContain("--allowed-tools");
+  });
+
+  it("uses --bare when API key auth is configured", async () => {
+    process.env["CLAUDE_BRIDGE_USE_API_KEY"] = "1";
+    process.env["ANTHROPIC_API_KEY"] = "sk-ant-test";
+    mockSpawn.mockResolvedValue(jsonResponse("Hello!"));
+
+    await executeQuery({ prompt: "Say hello", workingDirectory: tmpDir });
+
+    const args = mockSpawn.mock.calls[0][0].args;
+    expect(args).toContain("--bare");
   });
 
   it("text files are inlined in stdin", async () => {

@@ -100,6 +100,61 @@ describe("executeStructured", () => {
     expect(result.errors).toContain("Could not extract JSON");
   });
 
+  it("extracts structured_output field from CLI response", async () => {
+    spawnClaudeMock.mockResolvedValue({
+      stdout: JSON.stringify({
+        type: "result",
+        is_error: false,
+        result: "",
+        structured_output: { answer: "pong" },
+        session_id: "s-1",
+        total_cost_usd: 0.01,
+        usage: { input_tokens: 5, output_tokens: 3 },
+      }),
+      stderr: "",
+      exitCode: 0,
+      timedOut: false,
+    });
+
+    const result = await executeStructured({
+      prompt: "Return pong",
+      schema: JSON.stringify({
+        type: "object",
+        properties: { answer: { type: "string" } },
+        required: ["answer"],
+      }),
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.response).toBe('{"answer":"pong"}');
+  });
+
+  it("handles scalar structured_output values", async () => {
+    for (const scalar of [false, 0, "", null]) {
+      spawnClaudeMock.mockResolvedValue({
+        stdout: JSON.stringify({
+          type: "result",
+          is_error: false,
+          result: "",
+          structured_output: scalar,
+          session_id: "s-2",
+          total_cost_usd: 0.01,
+        }),
+        stderr: "",
+        exitCode: 0,
+        timedOut: false,
+      });
+
+      const result = await executeStructured({
+        prompt: "Return scalar",
+        schema: JSON.stringify({}),
+      });
+
+      expect(result.valid).toBe(true);
+      expect(result.response).toBe(JSON.stringify(scalar));
+    }
+  });
+
   it("rejects image files before spawning Claude", async () => {
     await expect(executeStructured({
       prompt: "Extract answer",

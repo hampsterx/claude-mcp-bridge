@@ -41,7 +41,18 @@ The `base` parameter in the review tool is validated against `/^[\w./-]+$/` befo
 - Subprocess spawned with `shell: false` and args as an array. No command injection from the bridge itself.
 - Large prompts piped via stdin rather than passed as command-line arguments.
 - Process groups killed on timeout (SIGTERM then SIGKILL after 5s grace period).
-- `--bare` mode ensures the CLI subprocess skips hooks, memory, and plugins.
+
+### Isolation by Auth Mode
+
+| Feature | API key (`--bare`) | Subscription (non-bare) |
+|---------|-------------------|------------------------|
+| Hooks | Skipped | May run |
+| CLAUDE.md loading | Skipped | Loaded from cwd |
+| Auto-memory | Disabled | Active |
+| Plugin sync | Skipped | May run |
+| Settings loading | Skipped | Disabled via `--setting-sources ""` |
+
+API key auth provides maximum isolation via `--bare` mode. Subscription auth requires non-bare mode because the CLI disables OAuth/keychain reads in bare mode. The bridge mitigates this by passing `--setting-sources ""` to prevent project and local settings from influencing the subprocess. The environment variable allowlist applies equally to both modes.
 
 ## Output Redaction
 

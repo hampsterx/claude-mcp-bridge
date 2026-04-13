@@ -96,6 +96,24 @@ export async function executeStructured(input: StructuredInput): Promise<Structu
   checkErrorPatterns(result.exitCode, result.stdout, result.stderr);
   throwIfClaudeError(parsed.isError, parsed.response);
 
+  // Claude CLI places --json-schema output in the structured_output field.
+  // Use key-existence check (not truthy) to handle scalar values like false, 0, "", null.
+  const raw = parsed.raw as Record<string, unknown> | undefined;
+  if (raw && "structured_output" in raw) {
+    return {
+      response: JSON.stringify(raw.structured_output),
+      valid: true,
+      model,
+      sessionId: parsed.sessionId,
+      totalCostUsd: parsed.totalCostUsd,
+      usage: parsed.usage,
+      filesIncluded,
+      filesSkipped,
+      timedOut: false,
+    };
+  }
+
+  // Fall back to extracting JSON from the response text
   const extracted = extractJson(parsed.response);
   if (!extracted) {
     return {
