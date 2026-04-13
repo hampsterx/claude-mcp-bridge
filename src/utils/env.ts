@@ -14,6 +14,17 @@ const ALLOWED_ENV_KEYS = [
 ];
 
 /**
+ * Check whether the bridge is configured for API key auth.
+ * Returns true when CLAUDE_BRIDGE_USE_API_KEY=1 and a key is present.
+ */
+export function isApiKeyAuth(): boolean {
+  return (
+    process.env["CLAUDE_BRIDGE_USE_API_KEY"] === "1" &&
+    !!process.env["ANTHROPIC_API_KEY"]
+  );
+}
+
+/**
  * Build a minimal, safe environment for Claude CLI subprocesses.
  *
  * By default, uses subscription auth (OAuth tokens in ~/.claude/).

@@ -8,7 +8,7 @@ Architecture and implementation details for claude-mcp-bridge.
 MCP Client  --stdio-->  claude-mcp-bridge  --spawn-->  claude CLI subprocess
 ```
 
-The bridge assembles prompts in TypeScript and spawns the Claude Code CLI in `--bare` mode (skips hooks, memory, and plugins). The `review` tool's agentic mode runs Claude with `--allowed-tools` inside the target repo, letting it explore files, follow imports, and read project instruction files. The bridge captures JSON output, parses it, and returns structured MCP responses.
+The bridge assembles prompts in TypeScript and spawns the Claude Code CLI as an isolated subprocess. With API key auth, `--bare` mode provides maximum isolation (skips hooks, memory, plugins, and CLAUDE.md loading). With subscription auth, the CLI runs without `--bare` (required for OAuth token access) but with `--setting-sources ""` to prevent project settings from influencing behavior. The `review` tool's agentic mode runs Claude with `--allowed-tools` inside the target repo, letting it explore files, follow imports, and read project instruction files. The bridge captures JSON output, parses it, and returns structured MCP responses.
 
 ## Subprocess Spawning
 

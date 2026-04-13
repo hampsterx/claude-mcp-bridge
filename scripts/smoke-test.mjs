@@ -78,7 +78,8 @@ try {
     const result = await executePing();
     console.log("cliFound:", result.cliFound);
     console.log("version:", result.version);
-    console.log("authStatus:", result.authStatus);
+    console.log("authMethod:", result.authMethod);
+    console.log("subscriptionType:", result.subscriptionType);
     console.log("defaultModel:", result.defaultModel);
     console.log("fallbackModel:", result.fallbackModel);
     console.log("serverVersion:", result.serverVersion);

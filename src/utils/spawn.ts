@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { buildSubprocessEnv } from "./env.js";
+import { buildSubprocessEnv, isApiKeyAuth } from "./env.js";
 
 /** Hard maximum timeout — no request can exceed this. */
 export const HARD_TIMEOUT_CAP = 600_000;
@@ -199,8 +199,20 @@ export interface ClaudeArgsOptions {
   prompt?: string;
 }
 
+/**
+ * Build the CLI argument array for a Claude subprocess.
+ *
+ * Uses `--bare` for API key auth (maximum isolation) or non-bare with
+ * `--setting-sources ""` for subscription auth (OAuth requires non-bare).
+ */
 export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
-  const args: string[] = ["-p", "--bare", "--disable-slash-commands", "--output-format", "json"];
+  // --bare provides maximum isolation (skips hooks, CLAUDE.md, memory, plugins)
+  // but only supports API key auth (OAuth/keychain reads are disabled).
+  // Subscription auth requires non-bare mode; --setting-sources "" prevents
+  // project/local settings from influencing the subprocess.
+  const args: string[] = isApiKeyAuth()
+    ? ["-p", "--bare", "--disable-slash-commands", "--output-format", "json"]
+    : ["-p", "--disable-slash-commands", "--setting-sources", "", "--output-format", "json"];
   if (options.model) args.push("--model", options.model);
   if (options.fallbackModel) args.push("--fallback-model", options.fallbackModel);
   if (options.maxBudgetUsd && options.maxBudgetUsd > 0) args.push("--max-budget-usd", String(options.maxBudgetUsd));
