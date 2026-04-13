@@ -44,7 +44,7 @@
   },
   "homepage": "https://github.com/hampsterx/claude-mcp-bridge#readme",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
