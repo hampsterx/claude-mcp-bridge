@@ -28,6 +28,14 @@ export async function resolveAndVerify(
 }
 
 /**
+ * Resolve a working directory for tool execution.
+ * Uses the provided directory (verified) or falls back to process.cwd().
+ */
+export async function resolveCwd(workingDirectory?: string): Promise<string> {
+  return verifyDirectory(workingDirectory ?? process.cwd());
+}
+
+/**
  * Verify a directory exists and is actually a directory.
  */
 export async function verifyDirectory(dir: string): Promise<string> {

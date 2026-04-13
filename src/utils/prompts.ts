@@ -11,11 +11,10 @@ const PROMPTS_DIR = resolve(__dirname, "../../prompts");
  * are replaced; unknown placeholders pass through unchanged.
  */
 export function loadPrompt(filename: string, vars: Record<string, string>): string {
-  let result = readFileSync(resolve(PROMPTS_DIR, basename(filename)), "utf8");
-  for (const [key, value] of Object.entries(vars)) {
-    result = result.replaceAll(`{{${key}}}`, value);
-  }
-  return result;
+  const template = readFileSync(resolve(PROMPTS_DIR, basename(filename)), "utf8");
+  // Single-pass replacement prevents user-supplied text in earlier
+  // placeholders from being mutated by later replacement passes.
+  return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) => vars[key] ?? match);
 }
 
 /**

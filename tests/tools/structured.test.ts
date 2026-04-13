@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SpawnOptions, SpawnResult } from "../../src/utils/spawn.js";
 
-const { spawnClaudeMock, verifyDirectoryMock, readFilesMock } = vi.hoisted(() => ({
+const { spawnClaudeMock, resolveCwdMock, readFilesMock } = vi.hoisted(() => ({
   spawnClaudeMock: vi.fn<(options: SpawnOptions) => Promise<SpawnResult>>(),
-  verifyDirectoryMock: vi.fn<(dir: string) => Promise<string>>(),
+  resolveCwdMock: vi.fn<(dir?: string) => Promise<string>>(),
   readFilesMock: vi.fn<(files: string[], rootDir: string) => Promise<Array<{ path: string; content: string; skipped?: string }>>>(),
 }));
 
@@ -16,7 +16,7 @@ vi.mock("../../src/utils/security.js", async () => {
   const actual = await vi.importActual<typeof import("../../src/utils/security.js")>("../../src/utils/security.js");
   return {
     ...actual,
-    verifyDirectory: verifyDirectoryMock,
+    resolveCwd: resolveCwdMock,
   };
 });
 
@@ -33,9 +33,9 @@ import { executeStructured } from "../../src/tools/structured.js";
 describe("executeStructured", () => {
   beforeEach(() => {
     spawnClaudeMock.mockReset();
-    verifyDirectoryMock.mockReset();
+    resolveCwdMock.mockReset();
     readFilesMock.mockReset();
-    verifyDirectoryMock.mockResolvedValue("/repo");
+    resolveCwdMock.mockResolvedValue("/repo");
     readFilesMock.mockResolvedValue([]);
   });
 

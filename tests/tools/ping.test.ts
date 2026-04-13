@@ -62,15 +62,17 @@ describe("executePing", () => {
     expect(result.maxConcurrent).toBe(5);
   });
 
-  it("returns diagnostics on non-ENOENT error", async () => {
+  it("returns cliFound false on non-ENOENT error with diagnostic", async () => {
     const err = new Error("permission denied") as NodeJS.ErrnoException;
     err.code = "EACCES";
     execFileSyncMock.mockImplementation(() => { throw err; });
 
     const result = await executePing();
 
-    expect(result.cliFound).toBe(true);
-    expect(result.version).toBeNull();
+    expect(result.cliFound).toBe(false);
+    expect(result.version).toContain("error:");
+    expect(result.version).toContain("permission denied");
+    expect(result.capabilities.bareMode).toBe(false);
     expect(result.activeCount).toBe(1);
     expect(result.queueDepth).toBe(2);
   });
