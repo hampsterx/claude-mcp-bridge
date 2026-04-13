@@ -1,6 +1,6 @@
-import { spawnClaude, buildClaudeArgs, HARD_TIMEOUT_CAP } from "../utils/spawn.js";
+import { spawnClaude, buildClaudeArgs, clampTimeout, STDIN_THRESHOLD } from "../utils/spawn.js";
 import { parseClaudeOutput, tryParsePartial, type ClaudeUsage } from "../utils/parse.js";
-import { checkErrorPatterns, throwIfClaudeError } from "../utils/errors.js";
+import { checkAndThrow } from "../utils/errors.js";
 import {
   readFiles,
   assemblePrompt,
@@ -8,7 +8,7 @@ import {
   MAX_IMAGE_FILE_SIZE,
 } from "../utils/files.js";
 import { appendLengthLimit } from "../utils/prompts.js";
-import { resolveAndVerify, checkFileSize, verifyDirectory, MAX_FILES } from "../utils/security.js";
+import { resolveAndVerify, checkFileSize, resolveCwd, MAX_FILES } from "../utils/security.js";
 import { resolveModel, getFallbackModel, resolveEffort, resolveMaxBudget } from "../utils/model.js";
 
 export interface QueryInput {
@@ -37,16 +37,13 @@ export interface QueryResult {
   resolvedCwd: string;
 }
 
-const STDIN_THRESHOLD = 4000;
 const IMAGE_QUERY_TIMEOUT = 120_000;
 
 export async function executeQuery(input: QueryInput): Promise<QueryResult> {
   const { prompt, files = [], timeout, maxResponseLength, maxBudgetUsd, effort } = input;
   const model = resolveModel("query", input.model);
 
-  const cwd = input.workingDirectory
-    ? await verifyDirectory(input.workingDirectory)
-    : process.cwd();
+  const cwd = await resolveCwd(input.workingDirectory);
 
   if (files.length > MAX_FILES) {
     throw new Error(`Too many files: ${files.length} (max ${MAX_FILES})`);
@@ -85,7 +82,7 @@ async function executeTextQuery(input: BaseQueryInput): Promise<QueryResult> {
   const fileContents = textFiles.length > 0 ? await readFiles(textFiles, cwd) : [];
   const fullPrompt = appendLengthLimit(assemblePrompt(prompt, fileContents), maxResponseLength);
   const useStdin = fullPrompt.length > STDIN_THRESHOLD || textFiles.length > 0;
-  const effectiveTimeout = Math.min(timeout ?? 60_000, HARD_TIMEOUT_CAP);
+  const effectiveTimeout = clampTimeout(timeout, 60_000);
 
   const args = buildClaudeArgs({
     model,
@@ -115,8 +112,7 @@ async function executeTextQuery(input: BaseQueryInput): Promise<QueryResult> {
   }
 
   const parsed = parseClaudeOutput(result.stdout, result.stderr);
-  checkErrorPatterns(result.exitCode, result.stdout, result.stderr);
-  throwIfClaudeError(parsed.isError, parsed.response);
+  checkAndThrow(result, parsed);
 
   return {
     response: parsed.response,
@@ -165,7 +161,7 @@ async function executeImageQuery(input: ImageQueryInput): Promise<QueryResult> {
     imageNames.length > 0 ? `${textPart}\n\n## Image Files\n\n${imagePart}` : textPart,
     maxResponseLength,
   );
-  const effectiveTimeout = Math.min(timeout ?? IMAGE_QUERY_TIMEOUT, HARD_TIMEOUT_CAP);
+  const effectiveTimeout = clampTimeout(timeout, IMAGE_QUERY_TIMEOUT);
 
   const args = buildClaudeArgs({
     model,
@@ -198,8 +194,7 @@ async function executeImageQuery(input: ImageQueryInput): Promise<QueryResult> {
   }
 
   const parsed = parseClaudeOutput(result.stdout, result.stderr);
-  checkErrorPatterns(result.exitCode, result.stdout, result.stderr);
-  throwIfClaudeError(parsed.isError, parsed.response);
+  checkAndThrow(result, parsed);
 
   return {
     response: parsed.response,

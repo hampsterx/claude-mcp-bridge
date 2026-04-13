@@ -1,9 +1,9 @@
-import { spawnClaude, buildClaudeArgs, HARD_TIMEOUT_CAP } from "../utils/spawn.js";
+import { spawnClaude, buildClaudeArgs, clampTimeout, HARD_TIMEOUT_CAP } from "../utils/spawn.js";
 import { parseClaudeOutput, tryParsePartial, type ClaudeUsage } from "../utils/parse.js";
-import { checkErrorPatterns, throwIfClaudeError } from "../utils/errors.js";
+import { checkAndThrow } from "../utils/errors.js";
 import { loadPrompt, buildLengthLimit } from "../utils/prompts.js";
-import { getGitRoot, getUncommittedDiff, getBranchDiff, getDiffStat, type DiffStat } from "../utils/git.js";
-import { verifyDirectory } from "../utils/security.js";
+import { getGitRoot, getUncommittedDiff, getBranchDiff, getDiffStat, validateBaseRef, type DiffStat } from "../utils/git.js";
+import { resolveCwd } from "../utils/security.js";
 import { resolveModel, getFallbackModel, resolveEffort, resolveMaxBudget } from "../utils/model.js";
 
 export interface ReviewInput {
@@ -79,19 +79,14 @@ export async function executeReview(input: ReviewInput): Promise<ReviewResult> {
   const { uncommitted = true, base, focus, quick = false, maxResponseLength, maxBudgetUsd, effort } = input;
   const model = resolveModel("review", input.model);
 
-  const requestedDir = input.workingDirectory
-    ? await verifyDirectory(input.workingDirectory)
-    : process.cwd();
+  const requestedDir = await resolveCwd(input.workingDirectory);
   const cwd = getGitRoot(requestedDir);
 
   // Validate base ref early — before any git commands use it.
-  // Security-critical: prevents argument injection into git commands.
-  if (base && (base.startsWith("-") || base.includes("..") || base.includes("@{") || !/^[\w./-]+$/.test(base))) {
-    throw new Error(`Invalid base ref: "${base}" — must be a valid git ref (alphanumeric, -, _, /, .)`);
-  }
+  if (base) validateBaseRef(base);
 
   if (quick) {
-    const timeout = Math.min(input.timeout ?? QUICK_TIMEOUT, HARD_TIMEOUT_CAP);
+    const timeout = clampTimeout(input.timeout, QUICK_TIMEOUT);
     return executeQuickReview({ cwd, uncommitted, base, focus, model, timeout, timeoutScaled: false, maxResponseLength, sessionId: input.sessionId, noSessionPersistence: input.noSessionPersistence, maxBudgetUsd, effort });
   }
 
@@ -99,7 +94,7 @@ export async function executeReview(input: ReviewInput): Promise<ReviewResult> {
   let timeout: number;
   let timeoutScaled = false;
   if (input.timeout != null) {
-    timeout = Math.min(input.timeout, HARD_TIMEOUT_CAP);
+    timeout = clampTimeout(input.timeout, HARD_TIMEOUT_CAP);
   } else {
     try {
       const spec = base ? { type: "branch" as const, base } : { type: "uncommitted" as const };
@@ -136,10 +131,6 @@ async function executeAgenticReview(input: InternalReviewInput): Promise<ReviewR
   let diffSource: ReviewResult["diffSource"];
 
   if (base) {
-    // Security-critical: prevents argument injection into git commands.
-    if (base.startsWith("-") || base.includes("..") || base.includes("@{") || !/^[\w./-]+$/.test(base)) {
-      throw new Error(`Invalid base ref: "${base}" — must be a valid git ref (alphanumeric, -, _, /, .)`);
-    }
     diffSpec = `git diff ${base}...HEAD -U5`;
     diffSource = "branch";
   } else if (uncommitted) {
@@ -207,8 +198,7 @@ async function executeAgenticReview(input: InternalReviewInput): Promise<ReviewR
   }
 
   const parsed = parseClaudeOutput(result.stdout, result.stderr);
-  checkErrorPatterns(result.exitCode, result.stdout, result.stderr);
-  throwIfClaudeError(parsed.isError, parsed.response);
+  checkAndThrow(result, parsed);
 
   return {
     response: parsed.response,
@@ -233,9 +223,6 @@ async function executeQuickReview(input: InternalReviewInput): Promise<ReviewRes
 
   try {
     if (base) {
-      if (base.startsWith("-") || base.includes("..") || base.includes("@{") || !/^[\w./-]+$/.test(base)) {
-        throw new Error(`Invalid base ref: "${base}" — must be a valid git ref (alphanumeric, -, _, /, .)`);
-      }
       diff = getBranchDiff(cwd, base);
       diffSource = "branch";
     } else if (uncommitted) {
@@ -287,8 +274,7 @@ async function executeQuickReview(input: InternalReviewInput): Promise<ReviewRes
   }
 
   const parsed = parseClaudeOutput(result.stdout, result.stderr);
-  checkErrorPatterns(result.exitCode, result.stdout, result.stderr);
-  throwIfClaudeError(parsed.isError, parsed.response);
+  checkAndThrow(result, parsed);
 
   return {
     response: parsed.response,

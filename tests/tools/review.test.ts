@@ -3,14 +3,14 @@ import type { SpawnOptions, SpawnResult } from "../../src/utils/spawn.js";
 
 const {
   spawnClaudeMock,
-  verifyDirectoryMock,
+  resolveCwdMock,
   getGitRootMock,
   getUncommittedDiffMock,
   getBranchDiffMock,
   getDiffStatMock,
 } = vi.hoisted(() => ({
   spawnClaudeMock: vi.fn<(options: SpawnOptions) => Promise<SpawnResult>>(),
-  verifyDirectoryMock: vi.fn<(dir: string) => Promise<string>>(),
+  resolveCwdMock: vi.fn<(dir?: string) => Promise<string>>(),
   getGitRootMock: vi.fn<(cwd: string) => string>(),
   getUncommittedDiffMock: vi.fn<(cwd: string, contextLines?: number) => string>(),
   getBranchDiffMock: vi.fn<(cwd: string, base: string, contextLines?: number) => string>(),
@@ -26,16 +26,20 @@ vi.mock("../../src/utils/security.js", async () => {
   const actual = await vi.importActual<typeof import("../../src/utils/security.js")>("../../src/utils/security.js");
   return {
     ...actual,
-    verifyDirectory: verifyDirectoryMock,
+    resolveCwd: resolveCwdMock,
   };
 });
 
-vi.mock("../../src/utils/git.js", () => ({
-  getGitRoot: getGitRootMock,
-  getUncommittedDiff: getUncommittedDiffMock,
-  getBranchDiff: getBranchDiffMock,
-  getDiffStat: getDiffStatMock,
-}));
+vi.mock("../../src/utils/git.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/utils/git.js")>();
+  return {
+    ...actual,
+    getGitRoot: getGitRootMock,
+    getUncommittedDiff: getUncommittedDiffMock,
+    getBranchDiff: getBranchDiffMock,
+    getDiffStat: getDiffStatMock,
+  };
+});
 
 import { executeReview, scaleAgenticTimeout } from "../../src/tools/review.js";
 
@@ -73,12 +77,12 @@ describe("scaleAgenticTimeout", () => {
 describe("executeReview", () => {
   beforeEach(() => {
     spawnClaudeMock.mockReset();
-    verifyDirectoryMock.mockReset();
+    resolveCwdMock.mockReset();
     getGitRootMock.mockReset();
     getUncommittedDiffMock.mockReset();
     getBranchDiffMock.mockReset();
 
-    verifyDirectoryMock.mockResolvedValue("/repo/requested");
+    resolveCwdMock.mockResolvedValue("/repo/requested");
     getGitRootMock.mockReturnValue("/repo/root");
     getDiffStatMock.mockReturnValue({ files: 3, insertions: 50, deletions: 10 });
   });

@@ -48,9 +48,11 @@ export class SessionStore implements SessionStorage {
     this.maxSessions = maxSessions;
   }
 
+  /** Get an active session by ID. Returns a defensive copy when found. */
   get(id: string): SessionEntry | undefined {
     this.evictExpired();
-    return this.store.get(id);
+    const entry = this.store.get(id);
+    return entry ? { ...entry } : undefined;
   }
 
   set(id: string, entry: SessionEntry): void {
@@ -76,7 +78,9 @@ export class SessionStore implements SessionStorage {
   /** List all active sessions, sorted by lastUsedAt descending (most recent first). */
   list(): SessionEntry[] {
     this.evictExpired();
-    return Array.from(this.store.values()).sort((a, b) => b.lastUsedAt - a.lastUsedAt);
+    return Array.from(this.store.values())
+      .map((e) => ({ ...e }))
+      .sort((a, b) => b.lastUsedAt - a.lastUsedAt);
   }
 
   private evictExpired(): void {

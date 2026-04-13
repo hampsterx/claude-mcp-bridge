@@ -1,12 +1,11 @@
-import { spawnClaude, buildClaudeArgs, HARD_TIMEOUT_CAP } from "../utils/spawn.js";
+import { spawnClaude, buildClaudeArgs, clampTimeout, STDIN_THRESHOLD } from "../utils/spawn.js";
 import { parseClaudeOutput, extractJson, type ClaudeUsage } from "../utils/parse.js";
-import { checkErrorPatterns, throwIfClaudeError } from "../utils/errors.js";
+import { checkAndThrow } from "../utils/errors.js";
 import { readFiles, assemblePrompt, isImageFile } from "../utils/files.js";
-import { verifyDirectory, MAX_FILES } from "../utils/security.js";
+import { resolveCwd, MAX_FILES } from "../utils/security.js";
 import { resolveModel, getFallbackModel, resolveMaxBudget } from "../utils/model.js";
 
 export const MAX_SCHEMA_SIZE = 20_000;
-const STDIN_THRESHOLD = 4000;
 
 export interface StructuredInput {
   prompt: string;
@@ -37,8 +36,9 @@ export async function executeStructured(input: StructuredInput): Promise<Structu
   const { prompt, files = [], timeout, sessionId, noSessionPersistence, maxBudgetUsd } = input;
   const model = resolveModel("structured", input.model);
 
-  if (input.schema.length > MAX_SCHEMA_SIZE) {
-    throw new Error(`Schema too large: ${input.schema.length} bytes (max ${MAX_SCHEMA_SIZE})`);
+  const schemaBytes = Buffer.byteLength(input.schema);
+  if (schemaBytes > MAX_SCHEMA_SIZE) {
+    throw new Error(`Schema too large: ${schemaBytes} bytes (max ${MAX_SCHEMA_SIZE})`);
   }
 
   let parsedSchema: object;
@@ -57,14 +57,12 @@ export async function executeStructured(input: StructuredInput): Promise<Structu
     throw new Error(`Too many files: ${files.length} (max ${MAX_FILES})`);
   }
 
-  const cwd = input.workingDirectory
-    ? await verifyDirectory(input.workingDirectory)
-    : process.cwd();
+  const cwd = await resolveCwd(input.workingDirectory);
 
   const fileContents = files.length > 0 ? await readFiles(files, cwd) : [];
   const fullPrompt = assemblePrompt(prompt, fileContents);
   const useStdin = fullPrompt.length > STDIN_THRESHOLD || files.length > 0;
-  const effectiveTimeout = Math.min(timeout ?? 60_000, HARD_TIMEOUT_CAP);
+  const effectiveTimeout = clampTimeout(timeout, 60_000);
 
   const args = buildClaudeArgs({
     model,
@@ -93,8 +91,7 @@ export async function executeStructured(input: StructuredInput): Promise<Structu
   }
 
   const parsed = parseClaudeOutput(result.stdout, result.stderr);
-  checkErrorPatterns(result.exitCode, result.stdout, result.stderr);
-  throwIfClaudeError(parsed.isError, parsed.response);
+  checkAndThrow(result, parsed);
 
   // Claude CLI places --json-schema output in the structured_output field.
   // Use key-existence check (not truthy) to handle scalar values like false, 0, "", null.

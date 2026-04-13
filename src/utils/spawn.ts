@@ -4,6 +4,17 @@ import { buildSubprocessEnv, isApiKeyAuth } from "./env.js";
 /** Hard maximum timeout — no request can exceed this. */
 export const HARD_TIMEOUT_CAP = 600_000;
 
+/** Byte threshold above which prompts are piped via stdin instead of CLI args. */
+export const STDIN_THRESHOLD = 4000;
+
+/**
+ * Clamp a requested timeout to [0, HARD_TIMEOUT_CAP], falling back to
+ * `defaultMs` when `requested` is undefined.
+ */
+export function clampTimeout(requested: number | undefined, defaultMs: number): number {
+  return Math.max(0, Math.min(requested ?? defaultMs, HARD_TIMEOUT_CAP));
+}
+
 const DEFAULT_MAX_CONCURRENT = 3;
 const QUEUE_TIMEOUT = 30_000;
 
@@ -69,7 +80,7 @@ export function findClaudeBinary(): string {
 }
 
 export async function spawnClaude(options: SpawnOptions): Promise<SpawnResult> {
-  const timeout = Math.min(options.timeout ?? 60_000, HARD_TIMEOUT_CAP);
+  const timeout = clampTimeout(options.timeout, 60_000);
 
   await acquireSlot();
   try {

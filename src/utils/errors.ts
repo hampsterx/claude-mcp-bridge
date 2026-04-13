@@ -68,6 +68,33 @@ export function throwIfClaudeError(isError: boolean, message: string): void {
   }
 }
 
+/**
+ * Run error-pattern, Claude-error, and generic non-zero-exit checks on a spawn result.
+ *
+ * Order matters: specific patterns (auth/quota/connection) throw first with
+ * actionable messages. Then throwIfClaudeError handles structured is_error
+ * responses from stdout. Only after both pass do we fall back to the generic
+ * stderr-based throw for unrecognized CLI failures.
+ */
+export function checkAndThrow(
+  result: { exitCode: number | null; stdout: string; stderr: string },
+  parsed: { isError: boolean; response: string },
+): void {
+  checkErrorPatterns(result.exitCode, result.stdout, result.stderr);
+  throwIfClaudeError(parsed.isError, parsed.response);
+
+  // Generic non-zero exit: CLI failed for an unrecognized reason.
+  // Only reached when specific patterns and is_error didn't match.
+  // Throw when stderr has content; stdout-only non-zero exits were
+  // already handled by throwIfClaudeError above.
+  if (result.exitCode !== 0 && result.exitCode !== null) {
+    const stderrText = result.stderr.trim();
+    if (stderrText) {
+      throw new Error(`Claude CLI exited with code ${result.exitCode}.\n\nDetails: ${redactSecrets(stderrText)}`);
+    }
+  }
+}
+
 export function getErrorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
   return String(e);

@@ -96,12 +96,13 @@ export async function executePing(): Promise<PingResult> {
         },
       };
     }
-    const { method, subscriptionType } = detectAuth();
+    // Non-ENOENT errors (EACCES, timeout, broken binary) mean the CLI exists
+    // but is not usable. Report cliFound: false with a diagnostic message.
     return {
-      cliFound: true,
-      version: null,
-      authMethod: method,
-      subscriptionType,
+      cliFound: false,
+      version: `error: ${err.message ?? String(e)}`,
+      authMethod: "none",
+      subscriptionType: null,
       defaultModel: getDefaultModel("query"),
       fallbackModel: getFallbackModel() ?? null,
       serverVersion: PKG_VERSION,
@@ -110,10 +111,10 @@ export async function executePing(): Promise<PingResult> {
       activeCount,
       queueDepth,
       capabilities: {
-        bareMode: true,
-        jsonOutput: true,
-        jsonSchema: true,
-        sessionResume: true,
+        bareMode: false,
+        jsonOutput: false,
+        jsonSchema: false,
+        sessionResume: false,
       },
     };
   }

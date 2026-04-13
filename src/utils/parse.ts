@@ -57,6 +57,9 @@ export function parseClaudeOutput(stdout: string, stderr: string): ClaudeOutput 
     return { response: cleanedStdout, isError: false };
   }
 
+  // Stderr fallback: stdout was empty but stderr has content. Callers run
+  // checkAndThrow after this function, which will throw on non-zero exits
+  // with stderr. This path returns the text for exit-0 edge cases.
   if (cleanedStderr) {
     return { response: cleanedStderr, isError: false };
   }

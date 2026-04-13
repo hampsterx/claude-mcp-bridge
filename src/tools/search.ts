@@ -1,8 +1,8 @@
-import { spawnClaude, buildClaudeArgs, HARD_TIMEOUT_CAP } from "../utils/spawn.js";
+import { spawnClaude, buildClaudeArgs, clampTimeout } from "../utils/spawn.js";
 import { parseClaudeOutput, tryParsePartial, type ClaudeUsage } from "../utils/parse.js";
-import { checkErrorPatterns, throwIfClaudeError } from "../utils/errors.js";
+import { checkAndThrow } from "../utils/errors.js";
 import { loadPrompt, buildLengthLimit } from "../utils/prompts.js";
-import { verifyDirectory } from "../utils/security.js";
+import { resolveCwd } from "../utils/security.js";
 import { resolveModel, getFallbackModel, resolveEffort, resolveMaxBudget } from "../utils/model.js";
 
 export interface SearchInput {
@@ -32,11 +32,9 @@ const SEARCH_TIMEOUT = 120_000;
 export async function executeSearch(input: SearchInput): Promise<SearchResult> {
   const { query, maxResponseLength, sessionId, noSessionPersistence, maxBudgetUsd, effort } = input;
   const model = resolveModel("search", input.model);
-  const timeout = Math.min(input.timeout ?? SEARCH_TIMEOUT, HARD_TIMEOUT_CAP);
+  const timeout = clampTimeout(input.timeout, SEARCH_TIMEOUT);
 
-  const cwd = input.workingDirectory
-    ? await verifyDirectory(input.workingDirectory)
-    : process.cwd();
+  const cwd = await resolveCwd(input.workingDirectory);
 
   const prompt = loadPrompt("search.md", {
     QUERY: query,
@@ -65,8 +63,7 @@ export async function executeSearch(input: SearchInput): Promise<SearchResult> {
   }
 
   const parsed = parseClaudeOutput(result.stdout, result.stderr);
-  checkErrorPatterns(result.exitCode, result.stdout, result.stderr);
-  throwIfClaudeError(parsed.isError, parsed.response);
+  checkAndThrow(result, parsed);
 
   return {
     response: parsed.response,
