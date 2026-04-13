@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.4.1] - 2026-04-13
+
+### Fixed
+
+- **Subscription auth in non-API-key mode**: dropped `--bare` flag that was preventing subscription auth from working correctly (#12)
+
+### Changed
+
+- Extracted shared helpers (`buildEnv`, `buildArgs`, `handleSpawnResult`, `checkErrorPatterns`) to reduce duplication across tool handlers (#13)
+- Expanded test coverage to 272 tests (up from 190)
+- Updated CI/CD and search tool descriptions
+
 ## [0.4.0] - 2026-04-12
 
 ### Changed
