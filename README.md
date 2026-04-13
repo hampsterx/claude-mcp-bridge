@@ -124,7 +124,7 @@ Key parameters: `uncommitted` (default true), `base`, `focus`, `quick`, `model` 
 
 ### search
 
-Web search via Claude CLI's WebSearch and WebFetch tools. Returns synthesized answers with source URLs.
+Web search powered by Anthropic's WebSearch tool via Claude CLI. Returns synthesized answers with source URLs.
 
 Key parameters: `query` (required), `model` (default `sonnet`), `maxResponseLength`, `maxBudgetUsd`, `timeout` (default 120s).
 

@@ -139,7 +139,7 @@ Query, review, and search handlers emit MCP `notifications/progress` every 15s d
 
 ## CI/CD
 
-Manual npm publish with OTP (no automation token, no OIDC).
+CI publishes to npm on tag push via OIDC trusted publishing (no OTP needed).
 
 ### Release Workflow
 
