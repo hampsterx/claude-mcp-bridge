@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.0] - 2026-04-21
+
+### Added
+
+- **MCP registry manifest** (`server.json`) conforming to the MCP registry schema, enabling publication to [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io) (#16)
+- `mcpName` field in `package.json` linking the npm package to its registry entry (`io.github.hampsterx/claude-mcp-bridge`)
+- Full env var documentation in the manifest: per-tool model overrides (`CLAUDE_QUERY_MODEL`, `CLAUDE_REVIEW_MODEL`, `CLAUDE_SEARCH_MODEL`, `CLAUDE_STRUCTURED_MODEL`), fallback behaviour, concurrency, budget caps, effort controls
+
+### Changed
+
+- **BREAKING: Node.js 22+ required**. Dropped Node 18 and 20 from the CI matrix and support (#14)
+- `package.json` description updated to cover code review and web search (previously only mentioned query/structured/health)
+
 ## [0.4.1] - 2026-04-13
 
 ### Fixed
