@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.hampsterx/claude-mcp-bridge",
-  "description": "MCP server that wraps Claude Code CLI for query, code review, web search, native structured output (--json-schema), session resume, and health checks. Adds cost metadata, budget caps, effort control, granular tool sandboxing, and subscription-first auth.",
+  "description": "MCP server wrapping Claude Code CLI for query, review, search, structured output, sessions.",
   "repository": {
     "url": "https://github.com/hampsterx/claude-mcp-bridge",
     "source": "github"
@@ -69,7 +69,7 @@
           "description": "Maximum concurrent Claude CLI subprocesses (default 3).",
           "format": "number",
           "isRequired": false,
-          "default": 3
+          "default": "3"
         },
         {
           "name": "CLAUDE_BRIDGE_USE_API_KEY",
