@@ -9,6 +9,10 @@ coverage/
 *.log
 .DS_Store
 *.txt
+.claude/
+.codex
+.codex/
+
 
 # Root uppercase markdown (personal/local files)
 /[A-Z]*.md
