@@ -1,7 +1,7 @@
 {
   "name": "claude-mcp-bridge",
   "mcpName": "io.github.hampsterx/claude-mcp-bridge",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "MCP server that wraps Claude Code CLI for query, code review, web search, structured output, and health checks",
   "author": "hampsterx",
   "license": "MIT",

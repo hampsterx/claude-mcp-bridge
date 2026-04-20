@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.1] - 2026-04-21
+
+### Fixed
+
+- `server.json` description shortened to meet the MCP registry's <=100-char limit (the registry validator rejected v0.5.0's longer description on publish)
+- `CLAUDE_MAX_CONCURRENT` default reverted to string `"3"`: the registry's `KeyValueInput` schema requires string defaults regardless of declared `format`, even when `format: "number"`
+
+The v0.5.0 npm tarball shipped with the pre-fix values. This release aligns the published tarball with what the registry actually accepts.
+
 ## [0.5.0] - 2026-04-21
 
 ### Added
