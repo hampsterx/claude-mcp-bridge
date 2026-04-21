@@ -10,9 +10,7 @@ coverage/
 .DS_Store
 *.txt
 .claude/
-.codex
 .codex/
-
 
 # Root uppercase markdown (personal/local files)
 /[A-Z]*.md
@@ -20,6 +18,6 @@ coverage/
 !/CONTRIBUTING.md
 !/CHANGELOG.md
 !/LICENSE.md
-!/CLAUDE.md
+!/AGENTS.md
 !/DESIGN.md
 !/SECURITY.md

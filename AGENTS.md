@@ -1,4 +1,8 @@
-# CLAUDE.md - claude-mcp-bridge
+# AGENTS.md - claude-mcp-bridge
+
+Guidance for AI coding agents working in the claude-mcp-bridge repository.
+
+This file defines repository-specific operating rules for autonomous or semi-autonomous coding agents. Follow these instructions unless a maintainer explicitly tells you otherwise.
 
 ## Project Overview
 
@@ -15,7 +19,7 @@ Open source MCP server that wraps Claude Code CLI as a subprocess, exposing code
 MCP Client  --stdio-->  claude-mcp-bridge  --spawn-->  claude CLI subprocess
 ```
 
-Prompts are assembled in TypeScript and spawned via the CLI in `--bare` mode. The `review` and `search` tools load prompt templates from `prompts/*.md` via `src/utils/prompts.ts` and fill placeholders. The `review` tool's agentic mode runs Claude with `--allowed-tools` inside the target repo, letting it explore files, follow imports, and read project instruction files.
+Prompts are assembled in TypeScript and spawned via the Claude Code CLI. Auth determines the spawn flags: API-key auth (`CLAUDE_BRIDGE_USE_API_KEY=1`) uses `--bare` for maximum isolation (skips hooks, memory, plugins, CLAUDE.md loading); subscription auth (the default) runs non-bare so the CLI can resolve OAuth tokens, with `--setting-sources ""` preventing project settings from leaking into the subprocess. See `DESIGN.md` § Subprocess Spawning and `SECURITY.md` § Isolation by Auth Mode. The `review` and `search` tools load prompt templates from `prompts/*.md` via `src/utils/prompts.ts` and fill placeholders. The `review` tool's agentic mode runs Claude with `--allowed-tools` inside the target repo, letting it explore files, follow imports, and read project instruction files.
 
 ## Tools
 
@@ -143,7 +147,21 @@ CI publishes to npm on tag push via OIDC trusted publishing (no OTP needed).
 
 ### Release Workflow
 
-See [RELEASING.md](RELEASING.md) for the full checklist including pre-release checks, publish steps, and post-release validation.
+The maintainer's `RELEASING.md` is gitignored (personal checklist); the release-critical pitfalls are inlined in the next section so contributors see them on clone.
+
+## Release Footguns
+
+Load-bearing behaviour that has broken (or nearly broken) past releases. Read before changing anything in `spawn.ts`, `security.ts`, the review tool, or the publish workflow.
+
+- **Subscription-first auth is load-bearing.** `ANTHROPIC_API_KEY` is stripped from the subprocess environment by default. Opt in via `CLAUDE_BRIDGE_USE_API_KEY=1`. Do not re-enable forwarding "for convenience"; it causes silent API-credit burn for users who only pay for the Claude.ai subscription. Shipped v0.4.0, reinforced in v0.4.1 when `--bare` was dropped so the subscription path works.
+- **`--bare` was dropped in v0.4.1.** Do not re-add it without testing the subscription path end-to-end. The CLI needs its full auth-resolution code path for OAuth-based subscription auth. With API-key auth (`CLAUDE_BRIDGE_USE_API_KEY=1`), `DESIGN.md` still describes `--bare` as the maximum-isolation mode; keep the two paths clearly separated.
+- **Native structured output** uses Claude CLI's `--json-schema` flag (no Ajv dependency). Do not swap in Ajv to "match" gemini/codex; the native path is stricter and faster here.
+- **Native session resume** via `--resume SESSION_ID` works and is exposed as the `sessionId` parameter. Keep it.
+- **Cost tracking in `_meta`** is unique to this bridge; callers rely on it for budget control (`CLAUDE_MAX_BUDGET_USD`). Do not drop `totalCostUsd`, token breakdown, or `durationMs` from execution metadata during refactors.
+- **Broader secret redaction patterns** (base64, API keys, Bearer tokens) are a feature. Do not narrow; gemini/codex have weaker redaction by design, this one is deliberately stricter.
+- **Version fields must move together at release time.** `npm version X.Y.Z` updates `package.json` + lockfile but not `server.json`. The MCP Registry rejects publishes where `server.json.version`, `server.json.packages[0].version`, and the npm tarball version disagree, or where `package.json.mcpName` is missing.
+- **MCP Registry `server.json` validation is schema-driven and pedantic.** Env-var `default` fields must be strings even when `format: "number"` is declared. Reviewer tools have converged on the wrong fix here before; run `mcp-publisher publish` against a dry target (or accept that the first publish attempt is your validator) rather than trusting type-match intuition.
+- **OIDC publish requires npm ≥ 11.5.1.** Node 20 in GitHub Actions ships npm 10, which does not support OIDC trusted publishing. `publish.yml` works around this with `npx --yes npm@latest publish --provenance --access public`. Do not revert to bare `npm publish`.
 
 ## Git Workflow
 
