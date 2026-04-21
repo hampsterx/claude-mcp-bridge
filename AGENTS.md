@@ -147,7 +147,7 @@ CI publishes to npm on tag push via OIDC trusted publishing (no OTP needed).
 
 ### Release Workflow
 
-See [RELEASING.md](RELEASING.md) for the full checklist (pre-release checks, publish steps, post-release validation). The maintainer's `RELEASING.md` is gitignored; the release-critical pitfalls live inline below so contributors see them.
+The maintainer's `RELEASING.md` is gitignored (personal checklist); the release-critical pitfalls are inlined in the next section so contributors see them on clone.
 
 ## Release Footguns
 
