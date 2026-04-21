@@ -147,20 +147,7 @@ CI publishes to npm on tag push via OIDC trusted publishing (no OTP needed).
 
 ### Release Workflow
 
-See [RELEASING.md](RELEASING.md) for the full checklist including pre-release checks, publish steps, and post-release validation.
-
-## Release Footguns
-
-Load-bearing behaviour that has broken (or nearly broken) past releases. Read before changing anything in `spawn.ts`, `security.ts`, the review tool, or the publish workflow.
-
-- **Subscription-first auth is load-bearing**. `ANTHROPIC_API_KEY` is stripped from the subprocess environment by default. Opt in via `CLAUDE_BRIDGE_USE_API_KEY=1`. Do not re-enable forwarding "for convenience"; it causes silent API-credit burn for users who only pay for the Claude.ai subscription. Shipped v0.4.0, reinforced in v0.4.1 when `--bare` was dropped so the subscription path works.
-- **`--bare` was dropped in v0.4.1**. Do not re-add it without testing the subscription path end-to-end. The CLI needs its full auth-resolution code path for OAuth-based subscription auth. With API-key auth (`CLAUDE_BRIDGE_USE_API_KEY=1`), `DESIGN.md` still describes `--bare` as the maximum-isolation mode; keep the two paths clearly separated.
-- **Native structured output** uses Claude CLI's `--json-schema` flag (no Ajv dependency). Do not swap in Ajv to "match" gemini/codex; the native path is stricter and faster here.
-- **Native session resume** via `--resume SESSION_ID` works and is exposed as the `sessionId` parameter. Keep it.
-- **Cost tracking in `_meta`** is unique to this bridge; callers rely on it for budget control (`CLAUDE_MAX_BUDGET_USD`). Do not drop `totalCostUsd`, token breakdown, or `durationMs` from execution metadata during refactors.
-- **Broader secret redaction patterns** (base64, API keys, Bearer tokens) are a feature. Do not narrow; gemini/codex have weaker redaction by design, this one is deliberately stricter.
-- **Version fields must move together at release time**. `npm version X.Y.Z` updates `package.json` + lockfile but not `server.json`. The MCP Registry rejects publishes where `server.json.version`, `server.json.packages[0].version`, and the npm tarball version disagree, or where `package.json.mcpName` is missing. See `RELEASING.md` step 2.
-- **MCP Registry `server.json` validation is schema-driven and pedantic**. Env-var `default` fields must be strings even when `format: "number"` is declared. Reviewer tools have converged on the wrong fix here before; run `mcp-publisher publish` against a dry target (or accept that the first publish attempt is your validator) rather than trusting type-match intuition.
+See [RELEASING.md](RELEASING.md) for the full checklist (pre-release checks, publish steps, post-release validation) and its **Release Footguns** section for load-bearing behaviour that has broken past releases.
 
 ## Git Workflow
 
