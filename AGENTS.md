@@ -147,7 +147,21 @@ CI publishes to npm on tag push via OIDC trusted publishing (no OTP needed).
 
 ### Release Workflow
 
-See [RELEASING.md](RELEASING.md) for the full checklist (pre-release checks, publish steps, post-release validation) and its **Release Footguns** section for load-bearing behaviour that has broken past releases.
+See [RELEASING.md](RELEASING.md) for the full checklist (pre-release checks, publish steps, post-release validation). The maintainer's `RELEASING.md` is gitignored; the release-critical pitfalls live inline below so contributors see them.
+
+## Release Footguns
+
+Load-bearing behaviour that has broken (or nearly broken) past releases. Read before changing anything in `spawn.ts`, `security.ts`, the review tool, or the publish workflow.
+
+- **Subscription-first auth is load-bearing.** `ANTHROPIC_API_KEY` is stripped from the subprocess environment by default. Opt in via `CLAUDE_BRIDGE_USE_API_KEY=1`. Do not re-enable forwarding "for convenience"; it causes silent API-credit burn for users who only pay for the Claude.ai subscription. Shipped v0.4.0, reinforced in v0.4.1 when `--bare` was dropped so the subscription path works.
+- **`--bare` was dropped in v0.4.1.** Do not re-add it without testing the subscription path end-to-end. The CLI needs its full auth-resolution code path for OAuth-based subscription auth. With API-key auth (`CLAUDE_BRIDGE_USE_API_KEY=1`), `DESIGN.md` still describes `--bare` as the maximum-isolation mode; keep the two paths clearly separated.
+- **Native structured output** uses Claude CLI's `--json-schema` flag (no Ajv dependency). Do not swap in Ajv to "match" gemini/codex; the native path is stricter and faster here.
+- **Native session resume** via `--resume SESSION_ID` works and is exposed as the `sessionId` parameter. Keep it.
+- **Cost tracking in `_meta`** is unique to this bridge; callers rely on it for budget control (`CLAUDE_MAX_BUDGET_USD`). Do not drop `totalCostUsd`, token breakdown, or `durationMs` from execution metadata during refactors.
+- **Broader secret redaction patterns** (base64, API keys, Bearer tokens) are a feature. Do not narrow; gemini/codex have weaker redaction by design, this one is deliberately stricter.
+- **Version fields must move together at release time.** `npm version X.Y.Z` updates `package.json` + lockfile but not `server.json`. The MCP Registry rejects publishes where `server.json.version`, `server.json.packages[0].version`, and the npm tarball version disagree, or where `package.json.mcpName` is missing.
+- **MCP Registry `server.json` validation is schema-driven and pedantic.** Env-var `default` fields must be strings even when `format: "number"` is declared. Reviewer tools have converged on the wrong fix here before; run `mcp-publisher publish` against a dry target (or accept that the first publish attempt is your validator) rather than trusting type-match intuition.
+- **OIDC publish requires npm ≥ 11.5.1.** Node 20 in GitHub Actions ships npm 10, which does not support OIDC trusted publishing. `publish.yml` works around this with `npx --yes npm@latest publish --provenance --access public`. Do not revert to bare `npm publish`.
 
 ## Git Workflow
 
@@ -162,15 +176,3 @@ See [RELEASING.md](RELEASING.md) for the full checklist (pre-release checks, pub
 - Error messages must be actionable ("claude CLI not found - install with: npm i -g @anthropic-ai/claude-code")
 - All public functions must have JSDoc
 - Tests colocated by directory: `tests/tools/`, `tests/utils/`
-
-## Agent Filename Hint
-
-`AGENTS.md` is the canonical agent instructions file for this repository. If your coding agent expects a different filename (some tools look for `CLAUDE.md`, `GEMINI.md`, `COPILOT.md`), create a local symlink rather than copying the file so both stay in sync:
-
-```bash
-ln -s AGENTS.md CLAUDE.md
-ln -s AGENTS.md GEMINI.md
-ln -s AGENTS.md COPILOT.md
-```
-
-Note: `CLAUDE.md` is gitignored in this repo, so a clone starts without one. The symlink above is safe to create in a fresh clone.
