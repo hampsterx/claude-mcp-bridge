@@ -22,7 +22,7 @@ Do not surface pre-existing issues not introduced by the diff, even if you notic
 
 ## Response Format
 
-Respond with these two sections, in order. If a section has no findings, write "None." under the heading.
+You MAY precede the sections with a single-line TL;DR (e.g. `No significant findings.`). Then respond with these two sections, in order. If a section has no findings, write "None." under the heading.
 
 ## Defects
 

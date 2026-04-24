@@ -41,7 +41,7 @@ When the diff is documentation-only or config-only AND no concrete broken behavi
 
 ## Response Format
 
-Respond with the two sections below, in order. If a section has no findings, write "None." under the heading.
+You MAY precede the sections with a single-line TL;DR (e.g. `No significant findings.`) and at most one brief residual-risk sentence. Then respond with the two sections below, in order. If a section has no findings, write "None." under the heading.
 
 ## Defects
 
