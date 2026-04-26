@@ -165,7 +165,7 @@ claude -p \
 
 For Claude Code users who want a reusable command, drop this into `~/.claude/commands/review-claude.md`:
 
-```markdown
+````markdown
 ---
 description: Code review via subprocess-isolated claude -p
 ---
@@ -185,7 +185,7 @@ claude -p \
 
 $(git diff origin/main...HEAD)"
 ```
-```
+````
 
 ### Representative review prompt
 

@@ -8,7 +8,7 @@ import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
  *
  * readOnly: query/search/structured are false because they can persist
  * Claude CLI session state to disk (~/.claude/) when sessionId is used.
- * ping is true (purely local, no side effects).
+ * ping and listSessions are true (purely local, no side effects).
  *
  * Titles are set on the registerTool config in index.ts, not here (avoid duplication).
  */

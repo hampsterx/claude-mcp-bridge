@@ -7,6 +7,9 @@ describe("model", () => {
   beforeEach(() => {
     delete process.env["CLAUDE_DEFAULT_MODEL"];
     delete process.env["CLAUDE_QUERY_MODEL"];
+    delete process.env["CLAUDE_STRUCTURED_MODEL"];
+    delete process.env["CLAUDE_SEARCH_MODEL"];
+    delete process.env["CLAUDE_PING_MODEL"];
     delete process.env["CLAUDE_FALLBACK_MODEL"];
     delete process.env["CLAUDE_MAX_BUDGET_USD"];
   });

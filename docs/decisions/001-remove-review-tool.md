@@ -40,9 +40,9 @@ Claude bridge keeps its stateful tools (`query`, `structured`, `search`, `ping`,
 - **Bridge surface**: 5 tools (`query`, `structured`, `search`, `ping`, `listSessions`).
 - **Documentation**: README adds a "Code review with this CLI" section that ships the hardened invocation plus a Claude Code skill template. The template is documentation, not code; the bridge does not maintain it as a runtime artifact.
 - **Bounded loss**: remote MCP clients without shell access lose the bridge-mediated path to claude-as-reviewer. Mitigated by host built-ins (Claude Code) where applicable; hosts without either built-ins or shell access fall back to the host's primary chat surface.
-- **Version bump**: minor.
+- **Version bump**: minor (0.5.1 → 0.6.0). Pre-1.0; breaking changes ride on minor bumps. See CHANGELOG for the BREAKING marker.
 
 ## Cross-references
 
-- README § Code review with this CLI
-- CHANGELOG entry for this version
+- [README § Code review with this CLI](../../README.md#code-review-with-this-cli)
+- [CHANGELOG v0.6.0](../../CHANGELOG.md)

@@ -24,7 +24,9 @@ All file paths are resolved to absolute paths via `realpath()` and verified to s
 
 ## Tool Sandboxing
 
-The `query` tool in `--bare` mode has no tool access by default unless the caller specifies otherwise. Callers that need code review with Claude as a subprocess should use the hardened `claude -p` invocation documented in [README § Code review with this CLI](README.md#code-review-with-this-cli) (with `--permission-mode plan`, `--bare`, `--strict-mcp-config`, `--mcp-config '{"mcpServers":{}}'`, `--no-session-persistence`, and `--max-budget-usd`). The bridge no longer ships a `review` tool (see [ADR-001](docs/decisions/001-remove-review-tool.md)).
+The `query` tool in `--bare` mode has no tool access by default unless the caller specifies otherwise. Callers that need code review with Claude as a subprocess should use the hardened `claude -p` invocation documented in [README § Code review with this CLI](README.md#code-review-with-this-cli). The bridge no longer ships a `review` tool (see [ADR-001](docs/decisions/001-remove-review-tool.md)).
+
+The README's hardened invocation passes `--strict-mcp-config` and `--mcp-config '{"mcpServers":{}}'` to suppress parent MCP servers. Note: at time of writing those flags have an open upstream-tracked behaviour history (anthropics/claude-code#10787 → #5593, both closed but the underlying parsing/schema reliability is worth re-checking before relying on it as a hard isolation guarantee). The other flags in the recipe (`--permission-mode plan`, `--bare`, `--no-session-persistence`, `--max-budget-usd`) are not affected.
 
 ## Subprocess Safety
 
