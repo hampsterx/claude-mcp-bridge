@@ -7,8 +7,10 @@ describe("model", () => {
   beforeEach(() => {
     delete process.env["CLAUDE_DEFAULT_MODEL"];
     delete process.env["CLAUDE_QUERY_MODEL"];
+    delete process.env["CLAUDE_STRUCTURED_MODEL"];
+    delete process.env["CLAUDE_SEARCH_MODEL"];
+    delete process.env["CLAUDE_PING_MODEL"];
     delete process.env["CLAUDE_FALLBACK_MODEL"];
-    delete process.env["CLAUDE_REVIEW_EFFORT"];
     delete process.env["CLAUDE_MAX_BUDGET_USD"];
   });
 
@@ -18,7 +20,7 @@ describe("model", () => {
 
   it("returns built-in defaults per tool", () => {
     expect(getDefaultModel("query")).toBe("sonnet");
-    expect(getDefaultModel("review")).toBe("opus");
+    expect(getDefaultModel("structured")).toBe("sonnet");
     expect(getDefaultModel("ping")).toBe("haiku");
   });
 
@@ -46,7 +48,7 @@ describe("resolveEffort", () => {
   const origEnv = { ...process.env };
 
   beforeEach(() => {
-    delete process.env["CLAUDE_REVIEW_EFFORT"];
+    delete process.env["CLAUDE_SEARCH_EFFORT"];
     delete process.env["CLAUDE_QUERY_EFFORT"];
   });
 
@@ -55,7 +57,6 @@ describe("resolveEffort", () => {
   });
 
   it("returns built-in effort defaults per tool", () => {
-    expect(resolveEffort("review")).toBe("high");
     expect(resolveEffort("search")).toBe("medium");
     expect(resolveEffort("query")).toBeUndefined();
     expect(resolveEffort("ping")).toBeUndefined();
@@ -63,12 +64,12 @@ describe("resolveEffort", () => {
 
   it("prefers explicit value over default", () => {
     expect(resolveEffort("query", "max")).toBe("max");
-    expect(resolveEffort("review", "low")).toBe("low");
+    expect(resolveEffort("search", "low")).toBe("low");
   });
 
   it("uses env override over built-in default", () => {
-    process.env["CLAUDE_REVIEW_EFFORT"] = "low";
-    expect(resolveEffort("review")).toBe("low");
+    process.env["CLAUDE_SEARCH_EFFORT"] = "low";
+    expect(resolveEffort("search")).toBe("low");
   });
 });
 

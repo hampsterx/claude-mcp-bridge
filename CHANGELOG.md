@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.0] - 2026-04-26
+
+### Removed
+
+- **BREAKING: `review` tool removed.** Code review now goes through Claude Code's built-in `/review`, `/security-review`, and `/ultrareview` slash commands (in-session) or direct `claude -p` invocation with hardened isolation flags (subprocess). README has the full hardened invocation and a Claude Code skill template.
+- Bundled reviewer prompts (`prompts/review-agentic.md`, `prompts/review-quick.md`).
+- `CLAUDE_REVIEW_MODEL` and `CLAUDE_REVIEW_EFFORT` env vars (no consumer remains).
+- `src/utils/git.ts` and its tests (sole consumer was `review.ts`).
+
+### Changed
+
+- Tool surface is now 5 tools: `query`, `search`, `structured`, `ping`, `listSessions`.
+- `package.json` and `server.json` descriptions updated to reflect the reduced surface.
+
+Rationale: [ADR-001](docs/decisions/001-remove-review-tool.md). Bridges should accept caller-supplied prompts rather than bundle them; for code review specifically, Claude Code's built-ins cover the in-session path and `claude -p` covers subprocess isolation, leaving no audience for a `review` tool in the bridge.
+
 ## [0.5.1] - 2026-04-21
 
 ### Fixed

@@ -22,7 +22,7 @@ export type ProgressNotificationSender = (notification: {
 /**
  * Start a periodic progress heartbeat that emits MCP `notifications/progress`.
  *
- * Used for long-running operations (review, search, query) to signal liveness
+ * Used for long-running operations (search, query) to signal liveness
  * to the MCP client. The first notification fires after `intervalMs`.
  * Notifications are fire-and-forget; failures are silently ignored (not all
  * clients support progress notifications).

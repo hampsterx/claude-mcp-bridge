@@ -8,7 +8,9 @@ Architecture and implementation details for claude-mcp-bridge.
 MCP Client  --stdio-->  claude-mcp-bridge  --spawn-->  claude CLI subprocess
 ```
 
-The bridge assembles prompts in TypeScript and spawns the Claude Code CLI as an isolated subprocess. With API key auth, `--bare` mode provides maximum isolation (skips hooks, memory, plugins, and CLAUDE.md loading). With subscription auth, the CLI runs without `--bare` (required for OAuth token access) but with `--setting-sources ""` to prevent project settings from influencing behavior. The `review` tool's agentic mode runs Claude with `--allowed-tools` inside the target repo, letting it explore files, follow imports, and read project instruction files. The bridge captures JSON output, parses it, and returns structured MCP responses.
+The bridge assembles prompts in TypeScript and spawns the Claude Code CLI as an isolated subprocess. With API key auth, `--bare` mode provides maximum isolation (skips hooks, memory, plugins, and CLAUDE.md loading). With subscription auth, the CLI runs without `--bare` (required for OAuth token access) but with `--setting-sources ""` to prevent project settings from influencing behavior. The bridge captures JSON output, parses it, and returns structured MCP responses.
+
+Code review is not a bridge tool. Use Claude Code's built-in `/review` family in-session, or invoke `claude -p` directly with hardened isolation flags (see [README § Code review with this CLI](README.md#code-review-with-this-cli)). Rationale: [ADR-001](docs/decisions/001-remove-review-tool.md).
 
 ## Subprocess Spawning
 
@@ -50,7 +52,7 @@ Subscription auth is used by default. The API key is only forwarded to the subpr
 
 When the primary model returns a quota exhaustion error, the bridge automatically retries with `CLAUDE_FALLBACK_MODEL` (default: `haiku`). Set to `none` to disable. The `_meta.model` field reflects the model actually used.
 
-Model resolution order: explicit parameter > tool-specific env var > `CLAUDE_DEFAULT_MODEL` > built-in default. This gives fine-grained control: use opus for reviews, sonnet for queries, haiku for fallback.
+Model resolution order: explicit parameter > tool-specific env var > `CLAUDE_DEFAULT_MODEL` > built-in default. This gives fine-grained control: e.g. opus for structured extraction, sonnet for queries, haiku for fallback.
 
 ## Sessions
 
@@ -97,31 +99,18 @@ All tools declare [MCP tool annotations](https://modelcontextprotocol.io/specifi
 | Tool | readOnlyHint | destructiveHint | openWorldHint |
 |------|-------------|----------------|---------------|
 | query | false | false | true |
-| review | false | false | true |
 | search | false | false | true |
 | structured | false | false | true |
 | ping | true | false | false |
 | listSessions | true | false | false |
 
-Query, review, search, and structured are `readOnlyHint: false` because they can persist Claude CLI session state to disk (`~/.claude/`) when a `sessionId` is used. Most tools are `openWorldHint: true` since they spawn a CLI that can access files and network.
+Query, search, and structured are `readOnlyHint: false` because they can persist Claude CLI session state to disk (`~/.claude/`) when a `sessionId` is used. Most tools are `openWorldHint: true` since they spawn a CLI that can access files and network.
 
 ## Progress Notifications
 
-Long-running tools (query, review, search) emit MCP `notifications/progress` every 15 seconds when the client provides a `progressToken` in the request's `_meta`. Heartbeats include elapsed time. Notifications are fire-and-forget; clients that don't support progress notifications are unaffected.
+Long-running tools (query, search) emit MCP `notifications/progress` every 15 seconds when the client provides a `progressToken` in the request's `_meta`. Heartbeats include elapsed time. Notifications are fire-and-forget; clients that don't support progress notifications are unaffected.
 
 Implemented in `src/utils/progress.ts`.
-
-## Agentic Review
-
-The review tool's agentic mode gives Claude a specific set of allowed tools:
-
-```
-Read, Grep, Glob, Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git status:*)
-```
-
-This is more restrictive than giving Claude full shell access. It can read any file, search code, and run git commands, but cannot execute arbitrary shell commands, write files, or access the network.
-
-The timeout auto-scales from diff size, following the same formula as the other bridges.
 
 ## Effort Control
 
@@ -131,11 +120,11 @@ Claude CLI supports `--effort` levels that trade quality for speed/cost:
 |-------|----------|
 | `low` | Quick questions, triage |
 | `medium` | General queries, search |
-| `high` | Code review, complex analysis |
-| `max` | Critical reviews, deep analysis |
+| `high` | Complex analysis |
+| `max` | Deep analysis |
 
 Each tool has its own default effort level (configurable via env vars), and callers can override per-request.
 
 ## Prompt Templates
 
-The `review` and `search` tools load prompt templates from the `prompts/` directory. Templates are filled with placeholders (diff content, focus area, etc.). Editable when running from a local clone; bundled when running via `npx`.
+The `search` tool loads its prompt template from the `prompts/` directory. Templates are filled with placeholders. Editable when running from a local clone; bundled when running via `npx`.

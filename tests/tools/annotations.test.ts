@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   queryAnnotations,
-  reviewAnnotations,
   searchAnnotations,
   structuredAnnotations,
   listSessionsAnnotations,
@@ -11,7 +10,6 @@ import {
 describe("tool annotations", () => {
   const allAnnotations = {
     query: queryAnnotations,
-    review: reviewAnnotations,
     search: searchAnnotations,
     structured: structuredAnnotations,
     listSessions: listSessionsAnnotations,
@@ -20,15 +18,6 @@ describe("tool annotations", () => {
 
   it("query: not read-only (session persistence), not destructive, not idempotent, open world", () => {
     expect(queryAnnotations).toEqual({
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: false,
-      openWorldHint: true,
-    });
-  });
-
-  it("review: not read-only (session persistence), not destructive, not idempotent, open world", () => {
-    expect(reviewAnnotations).toEqual({
       readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
@@ -78,7 +67,7 @@ describe("tool annotations", () => {
     }
     expect(pingAnnotations.readOnlyHint).toBe(true);
     expect(listSessionsAnnotations.readOnlyHint).toBe(true);
-    for (const name of ["query", "review", "search", "structured"] as const) {
+    for (const name of ["query", "search", "structured"] as const) {
       expect(allAnnotations[name].readOnlyHint, `${name} should not be read-only (session persistence)`).toBe(false);
     }
   });

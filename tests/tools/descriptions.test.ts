@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import {
   queryDescription,
-  reviewDescription,
   searchDescription,
   structuredDescription,
   listSessionsDescription,
@@ -15,7 +14,6 @@ const MAX_DESCRIPTION_SIZE = 2048;
 
 const allDescriptions = {
   query: queryDescription,
-  review: reviewDescription,
   search: searchDescription,
   structured: structuredDescription,
   listSessions: listSessionsDescription,
@@ -63,35 +61,6 @@ describe("tool descriptions", () => {
 
     it("mentions effort levels", () => {
       expect(queryDescription).toContain("effort");
-    });
-  });
-
-  describe("review description content", () => {
-    it("describes both modes", () => {
-      expect(reviewDescription).toContain("Agentic");
-      expect(reviewDescription).toContain("Quick");
-    });
-
-    it("lists agentic tools", () => {
-      expect(reviewDescription).toContain("Read");
-      expect(reviewDescription).toContain("Grep");
-      expect(reviewDescription).toContain("Glob");
-      expect(reviewDescription).toContain("git");
-    });
-
-    it("includes cost guidance", () => {
-      expect(reviewDescription).toContain("Opus");
-      expect(reviewDescription).toMatch(/\$\d+(?:\.\d+)?/);
-    });
-
-    it("mentions focus parameter", () => {
-      expect(reviewDescription).toContain("focus");
-      expect(reviewDescription).toContain("security");
-    });
-
-    it("explains diff source options", () => {
-      expect(reviewDescription).toContain("uncommitted");
-      expect(reviewDescription).toContain("base");
     });
   });
 
@@ -166,7 +135,7 @@ describe("tool descriptions", () => {
       "utf8",
     );
 
-    for (const name of ["query", "review", "search", "structured", "listSessions", "ping"]) {
+    for (const name of ["query", "search", "structured", "listSessions", "ping"]) {
       it(`${name} tool uses ${name}Description from descriptions.ts`, () => {
         expect(indexSource).toContain(`description: ${name}Description`);
       });

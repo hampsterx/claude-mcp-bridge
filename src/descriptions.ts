@@ -20,19 +20,6 @@ Tips:
 - Include relevant files via the files parameter for targeted context (text files inlined in prompt, images trigger allowed-tools mode).
 - Use noSessionPersistence=true for stateless one-shot calls.`;
 
-export const reviewDescription = `Repo-aware code review powered by Claude Code CLI. Returns structured feedback on code changes with two modes:
-
-- Agentic (default): Claude explores the repo with Read, Grep, Glob, and git tools. Reads changed files, follows imports, and examines related code before reviewing. Best for thorough reviews. Default timeout: auto-scaled from diff size (3-10 minutes).
-- Quick (quick: true): Receives only the diff text. Fast single-pass review without repo exploration. Default timeout: 2 minutes.
-
-Cost: Both modes default to Opus (~$0.05-0.15 quick, ~$0.25-0.50 agentic). Override with model parameter. Use maxBudgetUsd to cap cost on large diffs.
-
-Tips:
-- Use the focus parameter to direct attention: "security", "performance", "error handling", "test coverage".
-- Set workingDirectory to the repo being reviewed (auto-resolves to git root).
-- Default reviews uncommitted changes (staged + unstaged). Use base to review a branch diff (e.g. base: "main").
-- Prefer agentic mode for important reviews, quick mode for rapid feedback during development.`;
-
 export const searchDescription = `Web search via Claude Code CLI using WebSearch and WebFetch tools. Searches the web and synthesizes a comprehensive answer with source URLs.
 
 Use for: current information, documentation lookups, API references, comparing libraries, and research questions.
