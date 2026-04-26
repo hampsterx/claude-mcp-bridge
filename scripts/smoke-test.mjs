@@ -48,20 +48,6 @@ try {
     console.log("sessionId:", result.sessionId);
     assert(result.valid, "structured response should be valid");
     assert(result.response.includes("{"), "structured response should contain JSON");
-  } else if (tool === "review") {
-    const { executeReview } = await import("../dist/tools/review.js");
-    const result = await executeReview({
-      uncommitted: true,
-      quick: true,
-      workingDirectory,
-      timeout: 120_000,
-      maxResponseLength: 100,
-    });
-    console.log("response:", result.response);
-    console.log("mode:", result.mode);
-    console.log("diffSource:", result.diffSource);
-    assert(result.response && result.response.length > 0, "review response should be non-empty");
-    assert(result.mode === "quick", "review mode should be quick");
   } else if (tool === "search") {
     const { executeSearch } = await import("../dist/tools/search.js");
     const result = await executeSearch({
@@ -85,8 +71,13 @@ try {
     console.log("serverVersion:", result.serverVersion);
     assert(result.cliFound, "ping should find CLI");
     assert(result.serverVersion, "ping should report server version");
+  } else if (tool === "listSessions") {
+    const { sessionStore } = await import("../dist/utils/session.js");
+    const sessions = sessionStore.list();
+    console.log("sessions:", JSON.stringify(sessions, null, 2));
+    assert(Array.isArray(sessions), "listSessions should return an array");
   } else {
-    console.error(`Unknown tool: ${tool}. Use: query, structured, review, search, ping`);
+    console.error(`Unknown tool: ${tool}. Use: query, structured, search, ping, listSessions`);
     process.exit(1);
   }
 

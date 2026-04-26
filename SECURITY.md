@@ -24,17 +24,7 @@ All file paths are resolved to absolute paths via `realpath()` and verified to s
 
 ## Tool Sandboxing
 
-The `review` tool's agentic mode uses `--allowed-tools` to restrict Claude to a specific set of read-only tools:
-
-```
-Read, Grep, Glob, Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git status:*)
-```
-
-This prevents Claude from executing arbitrary shell commands, writing files, or accessing the network during review. The `query` tool in `--bare` mode has no tool access by default unless the caller specifies otherwise.
-
-## Git Argument Injection Prevention
-
-The `base` parameter in the review tool is validated against `/^[\w./-]+$/` before being passed to git commands. This prevents argument injection through crafted ref names (e.g. a malicious ref like `--output=/tmp/pwned`).
+The `query` tool in `--bare` mode has no tool access by default unless the caller specifies otherwise. Callers that need code review with Claude as a subprocess should use the hardened `claude -p` invocation documented in [README § Code review with this CLI](README.md#code-review-with-this-cli) (with `--permission-mode plan`, `--bare`, `--strict-mcp-config`, `--mcp-config '{"mcpServers":{}}'`, `--no-session-persistence`, and `--max-budget-usd`). The bridge no longer ships a `review` tool (see [ADR-001](docs/decisions/001-remove-review-tool.md)).
 
 ## Subprocess Safety
 
@@ -81,7 +71,7 @@ Matches are replaced with `[REDACTED]`.
 
 Claude-mcp-bridge exposes cost caps at multiple levels:
 
-- **Per-call**: `maxBudgetUsd` parameter on query, review, search, and structured tools (passed to `--max-budget-usd`)
+- **Per-call**: `maxBudgetUsd` parameter on query, search, and structured tools (passed to `--max-budget-usd`)
 - **Global**: `CLAUDE_MAX_BUDGET_USD` env var sets a default cap for all calls
 - **Fallback model**: On quota exhaustion, the bridge falls back to a cheaper model (default: haiku) rather than failing
 

@@ -1,10 +1,9 @@
-export type ToolName = "query" | "structured" | "search" | "review" | "ping";
+export type ToolName = "query" | "structured" | "search" | "ping";
 
 const DEFAULT_MODELS: Record<ToolName, string> = {
   query: "sonnet",
   structured: "sonnet",
   search: "sonnet",
-  review: "opus",
   ping: "haiku",
 };
 
@@ -29,7 +28,6 @@ export function resolveModel(tool: ToolName, explicit?: string): string {
 }
 
 const DEFAULT_EFFORT: Partial<Record<ToolName, string>> = {
-  review: "high",
   search: "medium",
 };
 

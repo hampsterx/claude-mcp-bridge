@@ -17,13 +17,6 @@ Works with any MCP client: Codex CLI, Gemini CLI, Cursor, Windsurf, VS Code, or 
 If you're in a terminal agent (Codex CLI, Gemini CLI) with shell access, call Claude Code CLI directly:
 
 ```bash
-# Quick review of current diff
-git diff origin/main...HEAD | claude -p --bare "Review this diff for bugs and security issues"
-
-# Agentic review (Claude reads files, follows imports, checks tests)
-claude -p --bare --allowed-tools "Read Grep Glob Bash(git diff:*,git log:*,git show:*)" \
-  "Review the changes on this branch vs main"
-
 # Analyze specific files
 claude -p --bare --allowed-tools "Read" "Analyze src/utils/parse.ts for edge cases"
 
@@ -32,6 +25,8 @@ claude -p --bare --max-budget-usd 0.50 "Is this retry logic sound?"
 ```
 
 `--bare` skips hooks, memory, and plugins for clean subprocess use. `--allowed-tools` controls exactly what Claude can access. `--max-budget-usd` prevents runaway costs.
+
+For code review, see [Code review with this CLI](#code-review-with-this-cli).
 
 **Use this MCP bridge instead when:**
 - Your client has no shell access (Cursor, Windsurf, Claude Desktop, VS Code)
@@ -101,8 +96,7 @@ Add to your MCP settings:
 
 | Tool | Description |
 |------|-------------|
-| **query** | Execute prompts with file context, session resume, effort control, and budget caps. Supports text and images. |
-| **review** | Agentic code review. Claude explores the repo with Read, Grep, Glob, and git commands. Quick diff-only mode available. |
+| **query** | Execute prompts with file context, session resume, effort control, and budget caps. Supports text and images. For code review, see [Code review with this CLI](#code-review-with-this-cli). |
 | **search** | Web search via Claude CLI's WebSearch and WebFetch tools. Returns synthesized answers with sources. |
 | **structured** | JSON Schema validated output via Claude CLI's native `--json-schema`. |
 | **ping** | Health check with CLI version, auth method, capabilities, and model config. |
@@ -113,14 +107,6 @@ Add to your MCP settings:
 Execute a prompt with optional file context. Supports session resume via `sessionId`, effort control (`low`/`medium`/`high`/`max`), and budget caps (`maxBudgetUsd`). Images (.png, .jpg, .gif, .webp, .bmp) up to 5MB each are passed to Claude's Read tool.
 
 Key parameters: `prompt` (required), `files`, `model` (default `sonnet`), `sessionId`, `effort`, `maxBudgetUsd`, `workingDirectory`, `timeout` (default 60s).
-
-### review
-
-Two modes:
-- **Agentic** (default): Claude runs inside the repo with Read, Grep, Glob, and git commands. It diffs, reads files, follows imports, and checks tests. Timeout auto-scales from diff size.
-- **Quick** (`quick: true`): Diff-only review, no repo exploration. Faster and cheaper.
-
-Key parameters: `uncommitted` (default true), `base`, `focus`, `quick`, `model` (default `opus`), `effort` (default `high`), `maxBudgetUsd`, `workingDirectory`, `timeout`.
 
 ### search
 
@@ -144,6 +130,84 @@ No parameters. Returns active sessions with metadata: `sessionId`, `model`, `cre
 
 All tools attach execution metadata (`_meta`) with `durationMs`, `model`, `sessionId`, `totalCostUsd`, and token breakdowns. See [DESIGN.md](DESIGN.md) for details.
 
+## Code review with this CLI
+
+This bridge does not bundle reviewer prompts. There are two paths for code review:
+
+### Claude Code built-ins (in-session)
+
+If you're already inside Claude Code, use the built-in slash commands: `/review`, `/security-review`, `/ultrareview`. No bridge involvement.
+
+### Direct `claude -p` invocation (subprocess-isolated)
+
+For shell-equipped consumers (terminal agents, CI, BYOS skills), invoke the CLI directly with hardened isolation flags:
+
+```bash
+claude -p \
+  --permission-mode plan \
+  --bare \
+  --add-dir <repo-root> \
+  --strict-mcp-config \
+  --mcp-config '{"mcpServers":{}}' \
+  --no-session-persistence \
+  --max-budget-usd 0.50 \
+  "<your review prompt + diff or file references>"
+```
+
+- `--permission-mode plan`: read-only.
+- `--bare`: strips parent's hooks, plugins, auto-memory, and `CLAUDE.md` autoload.
+- `--add-dir <repo-root>`: makes the repo's `CLAUDE.md` / `AGENTS.md` available where the diff warrants it.
+- `--strict-mcp-config --mcp-config '{"mcpServers":{}}'`: blocks parent's MCP servers from leaking in. The inner `mcpServers` key is required; the schema rejects bare `'{}'`.
+- `--no-session-persistence`: no session files for one-off reviews.
+- `--max-budget-usd`: per-call cost cap.
+
+### Claude Code skill template
+
+For Claude Code users who want a reusable command, drop this into `~/.claude/commands/review-claude.md`:
+
+```markdown
+---
+description: Code review via subprocess-isolated claude -p
+---
+
+Run code review on the diff between origin/main and HEAD.
+
+```bash
+claude -p \
+  --permission-mode plan \
+  --bare \
+  --add-dir "$(git rev-parse --show-toplevel)" \
+  --strict-mcp-config \
+  --mcp-config '{"mcpServers":{}}' \
+  --no-session-persistence \
+  --max-budget-usd 0.50 \
+  "Review the diff below for bugs, missing error handling on user input, tests modified to silence failures, and security issues (injection, missing auth checks, secret leaks). For each finding cite file:line, severity, and a suggested fix. Skip style/formatting.
+
+$(git diff origin/main...HEAD)"
+```
+```
+
+### Representative review prompt
+
+A starting point; adapt freely:
+
+```text
+Review the following diff:
+
+<diff content>
+
+Look for:
+- Bugs that would surface in production
+- Missing error handling on user-supplied input
+- Tests modified to silence failures rather than verify behaviour
+- Security issues (injection, missing auth checks, secret leaks)
+
+For each finding cite file:line, severity (high/medium/low), and a suggested fix.
+Skip style/formatting; assume an autoformatter handles those.
+```
+
+The bridge has no opinion on prompt content. See [ADR-001](docs/decisions/001-remove-review-tool.md) for the rationale.
+
 ## Configuration
 
 ### Models
@@ -154,7 +218,6 @@ All tools attach execution metadata (`_meta`) with `durationMs`, `model`, `sessi
 | `CLAUDE_QUERY_MODEL` | `sonnet` | Default for query |
 | `CLAUDE_STRUCTURED_MODEL` | `sonnet` | Default for structured |
 | `CLAUDE_SEARCH_MODEL` | `sonnet` | Default for search |
-| `CLAUDE_REVIEW_MODEL` | `opus` | Default for review |
 | `CLAUDE_FALLBACK_MODEL` | `haiku` | Fallback on quota exhaustion (`none` to disable) |
 
 Model resolution: explicit parameter > tool-specific env var > `CLAUDE_DEFAULT_MODEL` > built-in default.
@@ -173,7 +236,6 @@ Model resolution: explicit parameter > tool-specific env var > `CLAUDE_DEFAULT_M
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CLAUDE_REVIEW_EFFORT` | `high` | Default effort for review |
 | `CLAUDE_SEARCH_EFFORT` | `medium` | Default effort for search |
 | `CLAUDE_QUERY_EFFORT` | | Default effort for query |
 
@@ -194,8 +256,6 @@ Claude Code CLI has minimal startup overhead. Wall time is dominated by model in
 | Scenario | Typical time |
 |----------|-------------|
 | Trivial prompt (sonnet) | 5-10s |
-| Quick review, small diff | 15-30s |
-| Agentic review (explores repo) | 30s to 10 min |
 | Web search + synthesis | 15-30s |
 
 Cost metadata (`totalCostUsd`, token breakdowns) is returned in `_meta` on every response.
@@ -208,8 +268,8 @@ Three MCP servers, same architecture, different underlying CLIs. Each wraps a te
 |---|---|---|---|
 | **CLI** | Claude Code | Gemini CLI | Codex CLI |
 | **Provider** | Anthropic | Google | OpenAI |
-| **Tools** | query, review, search, structured, ping, listSessions | query, review, search, structured, ping | codex, review, search, query, structured, ping, listSessions |
-| **Agentic review** | Claude explores repo with Read/Grep/Glob/git | Gemini explores repo with file reads and git | Codex explores repo in full-auto mode |
+| **Tools** | query, search, structured, ping, listSessions | query, review, search, structured, ping | codex, search, query, structured, ping, listSessions |
+| **Code review** | Built-in `/review`, `/security-review`, `/ultrareview` slash commands or direct `claude -p` invocation | `review` tool with caller-supplied prompt and hardened defaults | `codex review` (native) or `codex` tool with caller-supplied prompt |
 | **Structured output** | Native `--json-schema` (no Ajv) | Ajv validation | Ajv validation |
 | **Session resume** | Native `--resume` | Not supported | Session IDs with multi-turn |
 | **Budget caps** | Native `--max-budget-usd` | Not supported | Not supported |

@@ -6,7 +6,7 @@ This file defines repository-specific operating rules for autonomous or semi-aut
 
 ## Project Overview
 
-Open source MCP server that wraps Claude Code CLI as a subprocess, exposing code execution, agentic review, web search, and structured output as MCP tools. Works with any MCP-compatible client: Codex CLI, Gemini CLI, Cursor, Windsurf, VS Code.
+Open source MCP server that wraps Claude Code CLI as a subprocess, exposing code execution, web search, and structured output as MCP tools. Works with any MCP-compatible client: Codex CLI, Gemini CLI, Cursor, Windsurf, VS Code.
 
 - **npm package**: `claude-mcp-bridge`
 - **License**: MIT
@@ -19,27 +19,19 @@ Open source MCP server that wraps Claude Code CLI as a subprocess, exposing code
 MCP Client  --stdio-->  claude-mcp-bridge  --spawn-->  claude CLI subprocess
 ```
 
-Prompts are assembled in TypeScript and spawned via the Claude Code CLI. Auth determines the spawn flags: API-key auth (`CLAUDE_BRIDGE_USE_API_KEY=1`) uses `--bare` for maximum isolation (skips hooks, memory, plugins, CLAUDE.md loading); subscription auth (the default) runs non-bare so the CLI can resolve OAuth tokens, with `--setting-sources ""` preventing project settings from leaking into the subprocess. See `DESIGN.md` § Subprocess Spawning and `SECURITY.md` § Isolation by Auth Mode. The `review` and `search` tools load prompt templates from `prompts/*.md` via `src/utils/prompts.ts` and fill placeholders. The `review` tool's agentic mode runs Claude with `--allowed-tools` inside the target repo, letting it explore files, follow imports, and read project instruction files.
+Prompts are assembled in TypeScript and spawned via the Claude Code CLI. Auth determines the spawn flags: API-key auth (`CLAUDE_BRIDGE_USE_API_KEY=1`) uses `--bare` for maximum isolation (skips hooks, memory, plugins, CLAUDE.md loading); subscription auth (the default) runs non-bare so the CLI can resolve OAuth tokens, with `--setting-sources ""` preventing project settings from leaking into the subprocess. See `DESIGN.md` § Subprocess Spawning and `SECURITY.md` § Isolation by Auth Mode. The `search` tool loads its prompt template from `prompts/*.md` via `src/utils/prompts.ts` and fills placeholders.
+
+Code review is not a bridge tool. Use Claude Code's built-in `/review` family in-session, or invoke `claude -p` directly with the hardened isolation flags documented in [README § Code review with this CLI](README.md#code-review-with-this-cli). Rationale: [ADR-001](docs/decisions/001-remove-review-tool.md).
 
 ## Tools
 
 | Tool | Purpose | Default Timeout |
 |------|---------|----------------|
 | `query` | Execute prompts with file context, session resume, budget control | 60s (text) / 120s (images) |
-| `review` | Agentic repo-aware code review (Claude explores repo with Read/Grep/Glob/git) | auto-scaled 3-10min (agentic) / 120s (quick) |
 | `search` | Web search via Claude CLI WebSearch/WebFetch tools | 120s |
 | `structured` | JSON Schema validated output via `--json-schema` | 60s |
 | `listSessions` | List active sessions with cumulative cost and turn counts | instant |
 | `ping` | Health check + CLI capability detection | 10s |
-
-### Review Tool Details
-
-Two modes:
-
-- **Agentic (default)**: Claude CLI runs with `--allowed-tools` inside the repo. It runs `git diff`, reads full files, follows imports, checks tests, and reads project instruction files before reviewing.
-- **Quick** (`quick: true`): Sends only the diff text. Single-pass, no repo exploration.
-
-Optional `focus` parameter directs attention (e.g. "security", "performance", "error handling").
 
 ### Structured Tool Details
 
@@ -63,9 +55,10 @@ MCP servers are long-lived processes. After rebuilding, use the smoke test to ca
 ```bash
 npm run smoke                            # query tool, cwd
 npm run smoke -- query /path/to/repo     # query with specific workingDirectory
-npm run smoke -- review /path/to/repo    # review tool against another repo
 npm run smoke -- search                  # web search
+npm run smoke -- structured              # structured JSON output
 npm run smoke -- ping                    # health check
+npm run smoke -- listSessions            # in-memory session store lookup
 ```
 
 ## Key Design Decisions
@@ -105,13 +98,13 @@ Every tool response includes `_meta` with execution metadata:
 - `timedOut: true` when subprocess exceeded timeout
 
 ### Tool Annotations
-All tools declare MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) in `src/annotations.ts`. query, review, search, and structured are `readOnlyHint: false` because they can persist Claude CLI session state to disk (`~/.claude/`) when a `sessionId` is used. `listSessions` and `ping` are `readOnlyHint: true`.
+All tools declare MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) in `src/annotations.ts`. query, search, and structured are `readOnlyHint: false` because they can persist Claude CLI session state to disk (`~/.claude/`) when a `sessionId` is used. `listSessions` and `ping` are `readOnlyHint: true`.
 
 ### Session Tracking
 In-memory `SessionStore` (TTL 24h, LRU eviction at 100) tracks cumulative cost, turn counts, and timing. `listSessions` tool exposes session state. `resetSession` parameter on query clears stored state before execution.
 
 ### Progress Heartbeats
-Query, review, and search handlers emit MCP `notifications/progress` every 15s during subprocess execution when the client provides a `progressToken` in `_meta`. Fire-and-forget (silent on unsupported clients). Implemented in `src/utils/progress.ts`.
+Query and search handlers emit MCP `notifications/progress` every 15s during subprocess execution when the client provides a `progressToken` in `_meta`. Fire-and-forget (silent on unsupported clients). Implemented in `src/utils/progress.ts`.
 
 ## Configuration
 
@@ -123,7 +116,6 @@ Query, review, and search handlers emit MCP `notifications/progress` every 15s d
 | `CLAUDE_QUERY_MODEL` | `sonnet` | Default model for query |
 | `CLAUDE_STRUCTURED_MODEL` | `sonnet` | Default model for structured |
 | `CLAUDE_SEARCH_MODEL` | `sonnet` | Default model for search |
-| `CLAUDE_REVIEW_MODEL` | `opus` | Default model for review |
 | `CLAUDE_FALLBACK_MODEL` | `haiku` | Fallback on quota exhaustion. `none` to disable |
 
 ### Runtime
@@ -151,7 +143,7 @@ The maintainer's `RELEASING.md` is gitignored (personal checklist); the release-
 
 ## Release Footguns
 
-Load-bearing behaviour that has broken (or nearly broken) past releases. Read before changing anything in `spawn.ts`, `security.ts`, the review tool, or the publish workflow.
+Load-bearing behaviour that has broken (or nearly broken) past releases. Read before changing anything in `spawn.ts`, `security.ts`, or the publish workflow.
 
 - **Subscription-first auth is load-bearing.** `ANTHROPIC_API_KEY` is stripped from the subprocess environment by default. Opt in via `CLAUDE_BRIDGE_USE_API_KEY=1`. Do not re-enable forwarding "for convenience"; it causes silent API-credit burn for users who only pay for the Claude.ai subscription. Shipped v0.4.0, reinforced in v0.4.1 when `--bare` was dropped so the subscription path works.
 - **`--bare` was dropped in v0.4.1.** Do not re-add it without testing the subscription path end-to-end. The CLI needs its full auth-resolution code path for OAuth-based subscription auth. With API-key auth (`CLAUDE_BRIDGE_USE_API_KEY=1`), `DESIGN.md` still describes `--bare` as the maximum-isolation mode; keep the two paths clearly separated.
