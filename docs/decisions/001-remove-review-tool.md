@@ -22,7 +22,7 @@ Code review with this CLI uses one of:
 
 The recommended invocations are documented in [README § Code review with this CLI](../../README.md#code-review-with-this-cli), including a Claude Code skill template consumers can drop into `~/.claude/commands/`.
 
-The bridge's retained tools (`query`, `structured`, `search`, `listSessions`, `ping`) earn their place on different terms: state the client should not hold (session IDs, budget tracking) and schema the client should not reinvent (structured output's Ajv validation).
+The bridge's retained tools (`query`, `structured`, `search`, `listSessions`, `ping`) earn their place on different terms: state the client should not hold (session IDs, budget tracking) and CLI invocation contracts the client should not reinvent (e.g. `structured` delegates schema validation to Claude CLI's native `--json-schema`; the bridge only parses the caller's schema string for JSON syntax).
 
 ## Alternatives considered
 
