@@ -1,8 +1,13 @@
 # Multi-stage build for claude-mcp-bridge.
 #
 # Bundles the Claude Code CLI this server wraps. The container responds to
-# MCP `tools/list` introspection without credentials; invoking tools requires
-# ANTHROPIC_API_KEY (or a mounted ~/.claude auth dir for subscription mode).
+# MCP `tools/list` introspection without credentials.
+#
+# Auth for actual tool calls (see src/utils/env.ts):
+#   - default: subscription auth via OAuth tokens. Mount the host
+#     ~/.claude directory at /home/node/.claude (read/write, UID 1000).
+#   - API key: set CLAUDE_BRIDGE_USE_API_KEY=1 and ANTHROPIC_API_KEY in the
+#     container env. The bridge passes --bare to the CLI internally.
 
 FROM node:22-alpine AS build
 WORKDIR /app
@@ -23,5 +28,9 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prompts ./prompts
+
+# Drop root. node:22-alpine ships a `node` user (UID 1000); use it.
+RUN chown -R node:node /app
+USER node
 
 ENTRYPOINT ["node", "dist/index.js"]
