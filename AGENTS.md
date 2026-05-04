@@ -21,7 +21,7 @@ MCP Client  --stdio-->  claude-mcp-bridge  --spawn-->  claude CLI subprocess
 
 Prompts are assembled in TypeScript and spawned via the Claude Code CLI. Auth determines the spawn flags: API-key auth (`CLAUDE_BRIDGE_USE_API_KEY=1`) uses `--bare` for maximum isolation (skips hooks, memory, plugins, CLAUDE.md loading); subscription auth (the default) runs non-bare so the CLI can resolve OAuth tokens, with `--setting-sources ""` preventing project settings from leaking into the subprocess. See `DESIGN.md` § Subprocess Spawning and `SECURITY.md` § Isolation by Auth Mode. The `search` tool loads its prompt template from `prompts/*.md` via `src/utils/prompts.ts` and fills placeholders.
 
-Code review is not a bridge tool. Use Claude Code's built-in `/review` family in-session, or invoke `claude -p` directly with the hardened isolation flags documented in [README § Code review with this CLI](README.md#code-review-with-this-cli). Rationale: [ADR-001](docs/decisions/001-remove-review-tool.md).
+Code review is not a bridge tool. Use Claude Code's built-in `/review` family in-session, or invoke `claude -p` directly with the hardened isolation flags documented in [README § Code review with this CLI](README.md#code-review-with-this-cli). Rationale: [ADR-001](docs/decisions/001-no-bundled-prompts.md).
 
 ## Tools
 

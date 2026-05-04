@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Tool surface is now 5 tools: `query`, `search`, `structured`, `ping`, `listSessions`.
 - `package.json` and `server.json` descriptions updated to reflect the reduced surface.
 
-Rationale: [ADR-001](docs/decisions/001-remove-review-tool.md). Bridges should accept caller-supplied prompts rather than bundle them; for code review specifically, Claude Code's built-ins cover the in-session path and `claude -p` covers subprocess isolation, leaving no audience for a `review` tool in the bridge.
+Rationale: [ADR-001](docs/decisions/001-no-bundled-prompts.md). Bridges should accept caller-supplied prompts rather than bundle them; for code review specifically, Claude Code's built-ins cover the in-session path and `claude -p` covers subprocess isolation, leaving no audience for a `review` tool in the bridge.
 
 ## [0.5.1] - 2026-04-21
 

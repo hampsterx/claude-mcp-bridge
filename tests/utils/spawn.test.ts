@@ -81,9 +81,9 @@ describe("buildClaudeArgs", () => {
   it("uses non-bare mode with --setting-sources for subscription auth", () => {
     const args = buildClaudeArgs({});
     expect(args).toContain("-p");
-    expect(args).toContain("--disable-slash-commands");
     expect(args).toContain("--setting-sources");
     expect(args).not.toContain("--bare");
+    expect(args).not.toContain("--disable-slash-commands");
   });
 
   it("uses --bare for API key auth", () => {

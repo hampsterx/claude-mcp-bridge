@@ -61,9 +61,9 @@ describe("executeQuery", () => {
 
     const args = mockSpawn.mock.calls[0][0].args;
     expect(args).toContain("-p");
-    expect(args).toContain("--disable-slash-commands");
     expect(args).not.toContain("--bare");
     expect(args).not.toContain("--allowed-tools");
+    expect(args).not.toContain("--disable-slash-commands");
   });
 
   it("uses --bare when API key auth is configured", async () => {

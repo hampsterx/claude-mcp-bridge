@@ -222,8 +222,8 @@ export function buildClaudeArgs(options: ClaudeArgsOptions): string[] {
   // Subscription auth requires non-bare mode; --setting-sources "" prevents
   // project/local settings from influencing the subprocess.
   const args: string[] = isApiKeyAuth()
-    ? ["-p", "--bare", "--disable-slash-commands", "--output-format", "json"]
-    : ["-p", "--disable-slash-commands", "--setting-sources", "", "--output-format", "json"];
+    ? ["-p", "--bare", "--output-format", "json"]
+    : ["-p", "--setting-sources", "", "--output-format", "json"];
   if (options.model) args.push("--model", options.model);
   if (options.fallbackModel) args.push("--fallback-model", options.fallbackModel);
   if (options.maxBudgetUsd && options.maxBudgetUsd > 0) args.push("--max-budget-usd", String(options.maxBudgetUsd));
