@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.1] - 2026-05-04
+
+### Added
+
+- **Docker image** for container distribution (PR #22). Runs as non-root, suitable for the [Glama](https://glama.ai/) MCP server listing. See `Dockerfile` for the canonical invocation.
+
+### Changed
+
+- ADR-001 reframed from "remove review tool" (historical) to "bridge does not bundle reviewer prompts" (forward-looking principle). Renamed to `docs/decisions/001-no-bundled-prompts.md`. README "Code review" section reworked: three honest sources for the review prompt (built-in REPL command, bridge `query` / `structured` with caller-supplied prompt, direct `claude -p`). PR #21, PR #23.
+- Dropped `--disable-slash-commands` from `claude -p` invocations on both auth paths. The flag was redundant: `--bare` (API-key path) disables all skills by design ([anthropics/claude-code#37207](https://github.com/anthropics/claude-code/issues/37207)), and `--setting-sources ""` (subscription path) excludes the user source where commands live. No user-visible behaviour change. PR #23.
+
 ## [0.6.0] - 2026-04-26
 
 ### Removed
