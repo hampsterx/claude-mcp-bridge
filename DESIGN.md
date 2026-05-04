@@ -10,7 +10,7 @@ MCP Client  --stdio-->  claude-mcp-bridge  --spawn-->  claude CLI subprocess
 
 The bridge assembles prompts in TypeScript and spawns the Claude Code CLI as an isolated subprocess. With API key auth, `--bare` mode provides maximum isolation (skips hooks, memory, plugins, and CLAUDE.md loading). With subscription auth, the CLI runs without `--bare` (required for OAuth token access) but with `--setting-sources ""` to prevent project settings from influencing behavior. The bridge captures JSON output, parses it, and returns structured MCP responses.
 
-Code review is not a bridge tool. Use Claude Code's built-in `/review` family in-session, or invoke `claude -p` directly with hardened isolation flags (see [README § Code review with this CLI](README.md#code-review-with-this-cli)). Rationale: [ADR-001](docs/decisions/001-remove-review-tool.md).
+Code review is not a bridge tool. Use Claude Code's built-in `/review` family in-session, or invoke `claude -p` directly with hardened isolation flags (see [README § Code review with this CLI](README.md#code-review-with-this-cli)). Rationale: [ADR-001](docs/decisions/001-no-bundled-prompts.md).
 
 ## Subprocess Spawning
 

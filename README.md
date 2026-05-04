@@ -26,7 +26,7 @@ claude -p --bare --max-budget-usd 0.50 "Is this retry logic sound?"
 
 `--bare` skips hooks, memory, and plugins for clean subprocess use. `--allowed-tools` controls exactly what Claude can access. `--max-budget-usd` prevents runaway costs.
 
-For code review, see [Code review (without this bridge)](#code-review-without-this-bridge).
+For code review, see [Code review with this CLI](#code-review-with-this-cli).
 
 **Use this MCP bridge instead when:**
 - Your client has no shell access (Cursor, Windsurf, Claude Desktop, VS Code)
@@ -96,7 +96,7 @@ Add to your MCP settings:
 
 | Tool | Description |
 |------|-------------|
-| **query** | Execute prompts with file context, session resume, effort control, and budget caps. Supports text and images. For code review, see [Code review (without this bridge)](#code-review-without-this-bridge). |
+| **query** | Execute prompts with file context, session resume, effort control, and budget caps. Supports text and images. For code review, see [Code review with this CLI](#code-review-with-this-cli). |
 | **search** | Web search via Claude CLI's WebSearch and WebFetch tools. Returns synthesized answers with sources. |
 | **structured** | JSON Schema validated output via Claude CLI's native `--json-schema`. |
 | **ping** | Health check with CLI version, auth method, capabilities, and model config. |
@@ -204,14 +204,18 @@ Three MCP servers, same architecture, different underlying CLIs. Each wraps a te
 
 All three share: subprocess env isolation, path sandboxing, output redaction, FIFO concurrency queue, MCP tool annotations, `_meta` response metadata, progress heartbeats.
 
-## Code review (without this bridge)
+## Code review with this CLI
 
-This section explains how to do code review with the Claude Code CLI. **The bridge isn't part of either path.** Built-in slash commands run inside Claude Code's interactive REPL and aren't exposed via `claude -p` or MCP; direct `claude -p` invocation skips the bridge by definition. If you reached this page hoping the bridge has a `review` tool, see [ADR-001](docs/decisions/001-remove-review-tool.md) for why it was removed.
+The reviewer prompt is supplied by the caller. The bridge does not bundle review prompts (see [ADR-001](docs/decisions/001-no-bundled-prompts.md)).
+
+- **In Claude Code (interactive REPL)**: use the built-in `/review`, `/security-review`, `/ultrareview`. REPL-only; not reachable via `claude -p` or this bridge.
+- **Through this bridge** (`query` / `structured`): pass the review prompt as plain text. Slash commands (built-in or user-installed `~/.claude/commands/`) do not resolve through the bridge, the isolation flags (`--bare` on the API-key path, `--setting-sources ""` on the subscription path) block all skill resolution by design. Tracked upstream: [anthropics/claude-code#37207](https://github.com/anthropics/claude-code/issues/37207).
+- **Direct `claude -p` (no bridge)**: user skills resolve as `/skill-name` when no isolation flags suppress them. For subprocess-isolated review use the hardened invocation below.
 
 Route based on where you are:
 
-- **Already in Claude Code?** Type `/review`, `/security-review`, or `/ultrareview` at the prompt. Skip the rest of this section.
-- **Calling from another MCP host (Cursor, Codex CLI, Gemini CLI, Claude Desktop)?** You can't reach review through this bridge. Use `claude -p` directly per below, or use the host's own review surface if it has one.
+- **Already in Claude Code?** Type `/review`, `/security-review`, or `/ultrareview`. Skip the rest of this section.
+- **Calling from another MCP host (Cursor, Codex CLI, Gemini CLI, Claude Desktop)?** Slash commands and skills are not reachable through the bridge. Pass your review prompt as plain text to `query` / `structured`, or invoke `claude -p` directly per below.
 
 ### Direct `claude -p` invocation (subprocess-isolated)
 
