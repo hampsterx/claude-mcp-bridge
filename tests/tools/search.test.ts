@@ -50,10 +50,13 @@ describe("executeSearch", () => {
 
     const call = spawnClaudeMock.mock.calls[0]![0];
     expect(call.cwd).toBe("/repo");
+    const t = call.args.indexOf("--tools");
+    expect(call.args.slice(t + 1, t + 3)).toEqual(["WebSearch", "WebFetch"]);
+    // Web tools are not auto-approved, so they must also be pre-permitted.
     expect(call.args).toContain("--allowed-tools");
     expect(call.args).toContain("WebSearch WebFetch");
-    expect(call.args).toContain("--model");
-    expect(call.args).toContain("sonnet");
+    expect(call.args).not.toContain("Bash");
+    expect(call.args).toContain("--model=sonnet");
     expect(call.stdin).toContain("latest release notes");
     expect(result.response).toBe("search response");
     expect(result.model).toBe("sonnet");
@@ -133,8 +136,7 @@ describe("executeSearch", () => {
     await executeSearch({ query: "test", effort: "high" });
 
     const args = spawnClaudeMock.mock.calls[0]![0].args;
-    expect(args).toContain("--effort");
-    expect(args).toContain("high");
+    expect(args).toContain("--effort=high");
   });
 
   it("forwards noSessionPersistence parameter", async () => {

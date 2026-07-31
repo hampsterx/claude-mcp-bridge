@@ -8,7 +8,9 @@ Architecture and implementation details for claude-mcp-bridge.
 MCP Client  --stdio-->  claude-mcp-bridge  --spawn-->  claude CLI subprocess
 ```
 
-The bridge assembles prompts in TypeScript and spawns the Claude Code CLI as an isolated subprocess. With API key auth, `--bare` mode provides maximum isolation (skips hooks, memory, plugins, and CLAUDE.md loading). With subscription auth, the CLI runs without `--bare` (required for OAuth token access) but with `--setting-sources ""` to prevent project settings from influencing behavior. The bridge captures JSON output, parses it, and returns structured MCP responses.
+The bridge assembles prompts in TypeScript and spawns the Claude Code CLI as an isolated subprocess. With API key auth, `--bare` mode skips hooks, memory, plugins, and CLAUDE.md loading. With subscription auth, the CLI runs without `--bare` (required for OAuth token access) but with `--setting-sources ""` to prevent project settings from influencing behavior. The bridge captures JSON output, parses it, and returns structured MCP responses.
+
+Context isolation and tool restriction are separate axes. The flags above bound what context the subprocess loads; neither restricts its toolset. That is `--tools`, which the bridge sets on every spawn to a read-only default. See [SECURITY.md § Tool Sandboxing](SECURITY.md#tool-sandboxing).
 
 Code review is not a bridge tool. Use Claude Code's built-in `/review` family in-session, or invoke `claude -p` directly with hardened isolation flags (see [README § Code review with this CLI](README.md#code-review-with-this-cli)). Rationale: [ADR-001](docs/decisions/001-no-bundled-prompts.md).
 
@@ -104,7 +106,7 @@ All tools declare [MCP tool annotations](https://modelcontextprotocol.io/specifi
 | ping | true | false | false |
 | listSessions | true | false | false |
 
-Query, search, and structured are `readOnlyHint: false` because they can persist Claude CLI session state to disk (`~/.claude/`) when a `sessionId` is used. Most tools are `openWorldHint: true` since they spawn a CLI that can access files and network.
+Query, search, and structured are `readOnlyHint: false` because they can persist Claude CLI session state to disk (`~/.claude/`) when a `sessionId` is used. Most tools are `openWorldHint: true` since they spawn a CLI that can read files and reach the network. The subprocess cannot write to the working directory or execute commands under the default toolset.
 
 ## Progress Notifications
 

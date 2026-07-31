@@ -62,7 +62,6 @@ describe("executeQuery", () => {
     const args = mockSpawn.mock.calls[0][0].args;
     expect(args).toContain("-p");
     expect(args).not.toContain("--bare");
-    expect(args).not.toContain("--allowed-tools");
     expect(args).not.toContain("--disable-slash-commands");
   });
 
@@ -92,6 +91,31 @@ describe("executeQuery", () => {
     expect(mockSpawn.mock.calls[0][0].stdin).toContain("some notes");
   });
 
+  it("scopes the text path to read-only tools", async () => {
+    mockSpawn.mockResolvedValue(jsonResponse("ok"));
+
+    await executeQuery({ prompt: "Analyze this repo", workingDirectory: tmpDir });
+
+    const call = mockSpawn.mock.calls[0][0];
+    const i = call.args.indexOf("--tools");
+    expect(call.args.slice(i + 1, i + 4)).toEqual(["Read", "Glob", "Grep"]);
+    for (const forbidden of ["Bash", "Write", "Edit"]) {
+      expect(call.args).not.toContain(forbidden);
+    }
+  });
+
+  it("honours CLAUDE_QUERY_TOOLS override", async () => {
+    process.env["CLAUDE_QUERY_TOOLS"] = "Read";
+    mockSpawn.mockResolvedValue(jsonResponse("ok"));
+
+    await executeQuery({ prompt: "hi", workingDirectory: tmpDir });
+
+    const call = mockSpawn.mock.calls[0][0];
+    const i = call.args.indexOf("--tools");
+    expect(call.args[i + 1]).toBe("Read");
+    expect(call.args[i + 2]).toBe("--allowed-tools");
+  });
+
   it("image files allow Read tool", async () => {
     await writeFile(path.join(tmpDir, "photo.png"), "fake png data");
     mockSpawn.mockResolvedValue(jsonResponse("I see a photo"));
@@ -104,9 +128,44 @@ describe("executeQuery", () => {
 
     expect(result.imagesIncluded).toEqual(["photo.png"]);
     const call = mockSpawn.mock.calls[0][0];
-    expect(call.args).toContain("--allowed-tools");
+    expect(call.args).toContain("--tools");
     expect(call.args).toContain("Read");
+    expect(call.args).not.toContain("Bash");
     expect(call.stdin).toContain("Read and analyze the image at:");
+  });
+
+  it("forces Read on the image path even when the override omits it", async () => {
+    process.env["CLAUDE_QUERY_TOOLS"] = "Glob";
+    await writeFile(path.join(tmpDir, "photo.png"), "fake png data");
+    mockSpawn.mockResolvedValue(jsonResponse("I see a photo"));
+
+    await executeQuery({
+      prompt: "Describe this",
+      files: ["photo.png"],
+      workingDirectory: tmpDir,
+    });
+
+    const call = mockSpawn.mock.calls[0][0];
+    const i = call.args.indexOf("--tools");
+    expect(call.args.slice(i + 1, i + 3)).toEqual(["Glob", "Read"]);
+  });
+
+  it("keeps the default keyword standalone on the image path", async () => {
+    // `--tools default Read` silently grants only Read, dropping the keyword.
+    process.env["CLAUDE_QUERY_TOOLS"] = "default";
+    await writeFile(path.join(tmpDir, "photo.png"), "fake png data");
+    mockSpawn.mockResolvedValue(jsonResponse("I see a photo"));
+
+    await executeQuery({
+      prompt: "Describe this",
+      files: ["photo.png"],
+      workingDirectory: tmpDir,
+    });
+
+    const call = mockSpawn.mock.calls[0][0];
+    const i = call.args.indexOf("--tools");
+    expect(call.args[i + 1]).toBe("default");
+    expect(call.args[i + 2]).toBe("--allowed-tools");
   });
 
   it("uses 120s default timeout for image queries", async () => {

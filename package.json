@@ -47,7 +47,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "strip-ansi": "^7.1.0",
     "zod": "^3.24.0"
   },
@@ -56,6 +56,6 @@
     "eslint": "^9.0.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.0.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.2.7"
   }
 }

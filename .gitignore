@@ -21,3 +21,4 @@ coverage/
 !/AGENTS.md
 !/DESIGN.md
 !/SECURITY.md
+.serena/

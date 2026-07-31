@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Security
+
+- **Caller-supplied values can no longer inject CLI flags.** The prompt is passed after a `--` separator, and the session id, model and effort are bound with the `=` form (`--resume=<id>`, `--model=<name>`, `--effort=<level>`). Previously a prompt or session id that looked like a flag was parsed as one: a `query` call whose prompt was a `--settings=` payload carrying a `SessionStart` hook executed an arbitrary command in the caller-supplied `workingDirectory`, and the CLI reported an input error only after the hook had already run. A flag-shaped prompt could also restore the full toolset via `--tools=default`, defeating the restriction below. Tool names are validated as plain identifiers for the same reason.
+
+- **Subprocesses are now restricted to a read-only toolset.** Every spawn passes `--tools`, and the defaults withhold `Bash`, `Write` and `Edit` on every path: `query` and `structured` get `Read Glob Grep`, `search` gets `WebSearch WebFetch`. Operators can widen this per tool via the new env vars below.
+
+  Previously `query` and `structured` passed no tool restriction at all, and the `--allowed-tools` used by `search` and image-`query` does not restrict the toolset (it only grants permission). The practical effect was that a `query` call could execute shell commands in the caller-supplied `workingDirectory`. Verified against CLI 2.1.220 on both auth paths: `--bare` and `--setting-sources ""` bound what *context* the subprocess loads and never restricted its tools.
+
+### Added
+
+- `CLAUDE_QUERY_TOOLS`, `CLAUDE_STRUCTURED_TOOLS` and `CLAUDE_SEARCH_TOOLS` to override the built-in toolset per tool. Accepts a comma or space separated list, `default` for the CLI's full set, or an empty value for no tools.
+
+### Fixed
+
+- `SECURITY.md` claimed the `query` tool "in `--bare` mode has no tool access by default". That was false: `--bare` skips hooks, CLAUDE.md, memory and plugins but leaves the full toolset live. The section now documents the `--tools` vs `--allowed-tools` split and the per-tool defaults.
+
+### Changed
+
+- `spawnClaude` now rejects any argv lacking `--tools`. The restriction is enforced at the subprocess boundary rather than relying on every caller having gone through `buildClaudeArgs`.
+- `buildClaudeArgs` takes a required `tools` array in place of the optional `allowedTools`, so no call site can silently omit a tool restriction. Both flags are emitted from that one list: `--tools` bounds the surface, `--allowed-tools` pre-approves it (`WebSearch` and `WebFetch` are not auto-approved and otherwise stall on a permission prompt).
+- Bumped `@modelcontextprotocol/sdk` to 1.30.0 and `vitest` to 3.2.7, clearing the vitest UI-server advisory ([GHSA-5xrq-8626-4rwp](https://github.com/advisories/GHSA-5xrq-8626-4rwp)). No direct-dependency advisories remain.
+
 ## [0.6.1] - 2026-05-04
 
 ### Added

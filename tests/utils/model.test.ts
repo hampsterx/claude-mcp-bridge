@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { getDefaultModel, getFallbackModel, resolveModel, resolveEffort, resolveMaxBudget } from "../../src/utils/model.js";
+import { getDefaultModel, getFallbackModel, resolveModel, resolveEffort, resolveMaxBudget, resolveTools } from "../../src/utils/model.js";
 
 describe("model", () => {
   const origEnv = { ...process.env };
@@ -12,6 +12,9 @@ describe("model", () => {
     delete process.env["CLAUDE_PING_MODEL"];
     delete process.env["CLAUDE_FALLBACK_MODEL"];
     delete process.env["CLAUDE_MAX_BUDGET_USD"];
+    delete process.env["CLAUDE_QUERY_TOOLS"];
+    delete process.env["CLAUDE_STRUCTURED_TOOLS"];
+    delete process.env["CLAUDE_SEARCH_TOOLS"];
   });
 
   afterEach(() => {
@@ -105,5 +108,55 @@ describe("resolveMaxBudget", () => {
   it("ignores zero and negative explicit values", () => {
     expect(resolveMaxBudget(0)).toBe(0);
     expect(resolveMaxBudget(-1)).toBe(0);
+  });
+});
+
+describe("resolveTools", () => {
+  const origEnv = { ...process.env };
+
+  beforeEach(() => {
+    delete process.env["CLAUDE_QUERY_TOOLS"];
+    delete process.env["CLAUDE_STRUCTURED_TOOLS"];
+    delete process.env["CLAUDE_SEARCH_TOOLS"];
+  });
+
+  afterEach(() => {
+    process.env = { ...origEnv };
+  });
+
+  it("defaults to read-only tools for query and structured", () => {
+    expect(resolveTools("query")).toEqual(["Read", "Glob", "Grep"]);
+    expect(resolveTools("structured")).toEqual(["Read", "Glob", "Grep"]);
+  });
+
+  it("defaults search to web tools only", () => {
+    expect(resolveTools("search")).toEqual(["WebSearch", "WebFetch"]);
+  });
+
+  it("never grants execution or mutation tools by default", () => {
+    for (const tool of ["query", "structured", "search"] as const) {
+      for (const forbidden of ["Bash", "Write", "Edit"]) {
+        expect(resolveTools(tool)).not.toContain(forbidden);
+      }
+    }
+  });
+
+  it("accepts a comma or space separated env override", () => {
+    process.env["CLAUDE_QUERY_TOOLS"] = "Read, Grep";
+    expect(resolveTools("query")).toEqual(["Read", "Grep"]);
+    process.env["CLAUDE_QUERY_TOOLS"] = "Read Grep";
+    expect(resolveTools("query")).toEqual(["Read", "Grep"]);
+  });
+
+  it("treats an empty env override as no tools", () => {
+    process.env["CLAUDE_QUERY_TOOLS"] = "";
+    expect(resolveTools("query")).toEqual([]);
+    process.env["CLAUDE_QUERY_TOOLS"] = "   ";
+    expect(resolveTools("query")).toEqual([]);
+  });
+
+  it("passes through the CLI's default keyword", () => {
+    process.env["CLAUDE_STRUCTURED_TOOLS"] = "default";
+    expect(resolveTools("structured")).toEqual(["default"]);
   });
 });
