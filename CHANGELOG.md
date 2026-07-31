@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.7.0] - 2026-07-31
+
+Upgrade recommended for all users: 0.6.1 and earlier let a crafted `query` prompt execute arbitrary commands.
+
+**Behaviour change**: subprocesses no longer get the CLI's full toolset. A caller that relied on `query` reaching for `Bash`, `Write` or `Edit` will find those absent, and should set the matching `CLAUDE_*_TOOLS` env var to widen the default.
 
 ### Security
 
