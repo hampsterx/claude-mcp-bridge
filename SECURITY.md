@@ -24,13 +24,40 @@ All file paths are resolved to absolute paths via `realpath()` and verified to s
 
 ## Tool Sandboxing
 
-The `query` tool in `--bare` mode has no tool access by default unless the caller specifies otherwise. Callers that need code review with Claude as a subprocess should use the hardened `claude -p` invocation documented in [README § Code review with this CLI](README.md#code-review-with-this-cli). The bridge no longer ships a `review` tool (see [ADR-001](docs/decisions/001-no-bundled-prompts.md)).
+Every spawned subprocess gets an explicit built-in toolset via `--tools`. The defaults below are read-only on every path, so `Bash`, `Write` and `Edit` are not granted unless an operator widens them:
+
+| Tool | Built-in tools granted |
+|------|------------------------|
+| `query` (text) | `Read`, `Glob`, `Grep` |
+| `query` (images) | `Read`, `Glob`, `Grep` (`Read` is always included; images are passed by path) |
+| `structured` | `Read`, `Glob`, `Grep` |
+| `search` | `WebSearch`, `WebFetch` |
+
+Override per tool with `CLAUDE_QUERY_TOOLS`, `CLAUDE_STRUCTURED_TOOLS` or `CLAUDE_SEARCH_TOOLS`: a comma or space separated list, `default` for the CLI's full built-in set, or empty for no tools. Widening these grants the subprocess real capability in the caller-supplied working directory, so treat `default` as opting out of this section.
+
+Two mechanics are worth stating plainly, because both are easy to get wrong:
+
+- **`--tools` restricts the toolset; `--allowed-tools` only grants permission.** `--allowed-tools Read` does *not* remove `Bash`, and `Bash` is auto-approved in `--print` mode, so an allowlist alone leaves command execution reachable. The bridge emits both flags from the same list: `--tools` to bound the surface, `--allowed-tools` to pre-approve it (`WebSearch` and `WebFetch` are not auto-approved and stall on a permission prompt without it).
+- **Neither `--bare` nor `--setting-sources ""` restricts tools.** They control what *context* the subprocess loads (hooks, CLAUDE.md, memory, plugins, settings). Tool access is orthogonal and governed only by `--tools`.
+
+With no tools granted, the model may narrate plausible-looking tool calls it never made rather than reporting that it has none. Prefer a minimal read-only set over an empty one where the prompt might invite tool use.
+
+Callers that need code review with Claude as a subprocess should use the hardened `claude -p` invocation documented in [README § Code review with this CLI](README.md#code-review-with-this-cli). The bridge no longer ships a `review` tool (see [ADR-001](docs/decisions/001-no-bundled-prompts.md)).
 
 The README's hardened invocation passes `--strict-mcp-config` and `--mcp-config '{"mcpServers":{}}'` to suppress parent MCP servers. Note: at time of writing those flags have an open upstream-tracked behaviour history (anthropics/claude-code#10787 → #5593, both closed but the underlying parsing/schema reliability is worth re-checking before relying on it as a hard isolation guarantee). The other flags in the recipe (`--permission-mode plan`, `--bare`, `--no-session-persistence`, `--max-budget-usd`) are not affected.
 
+## Argument Injection
+
+`shell: false` stops the shell from interpreting arguments, but it does not stop the *CLI's own parser* from reading a caller-supplied value as a flag. Two values reach argv from MCP tool input, and both are bound so they cannot be re-parsed as options:
+
+- **Prompt**: passed after a `--` separator, which ends option parsing. Without it, a prompt of `--tools=default` restores the full toolset, and a `--settings=` payload carrying a `SessionStart` hook runs an arbitrary command (the CLI reports an input error only after the hook has already fired).
+- **Session id, model and effort**: passed as `--resume=<id>`, `--model=<name>`, `--effort=<level>`. Whether a dash-prefixed value stays bound otherwise depends on the flag declaring its value required or optional, and that differs per flag: `--resume` is optional, so in the space-separated form a dash-prefixed id detaches and is parsed as a flag. The `=` form removes the dependence on that distinction.
+
+Tool names are validated as plain identifiers (`^[A-Za-z][A-Za-z0-9_]*$`) before reaching `--tools`, since a dash-prefixed entry would terminate the variadic list and be read as a flag.
+
 ## Subprocess Safety
 
-- Subprocess spawned with `shell: false` and args as an array. No command injection from the bridge itself.
+- Subprocess spawned with `shell: false` and args as an array. No shell interpretation of arguments.
 - Large prompts piped via stdin rather than passed as command-line arguments.
 - Process groups killed on timeout (SIGTERM then SIGKILL after 5s grace period).
 
@@ -43,8 +70,9 @@ The README's hardened invocation passes `--strict-mcp-config` and `--mcp-config 
 | Auto-memory | Disabled | Active |
 | Plugin sync | Skipped | May run |
 | Settings loading | Skipped | Disabled via `--setting-sources ""` |
+| Tool access | Set by `--tools` (see [Tool Sandboxing](#tool-sandboxing)) | Set by `--tools`, identical to the API key mode |
 
-API key auth provides maximum isolation via `--bare` mode. Subscription auth requires non-bare mode because the CLI disables OAuth/keychain reads in bare mode. The bridge mitigates this by passing `--setting-sources ""` to prevent project and local settings from influencing the subprocess. The environment variable allowlist applies equally to both modes.
+API key auth loads less context via `--bare` mode. Subscription auth requires non-bare mode because the CLI disables OAuth/keychain reads in bare mode. The bridge mitigates this by passing `--setting-sources ""` to prevent project and local settings from influencing the subprocess. The environment variable allowlist and the tool restriction apply equally to both modes.
 
 ## Output Redaction
 

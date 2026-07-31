@@ -9,7 +9,7 @@ import {
 } from "../utils/files.js";
 import { appendLengthLimit } from "../utils/prompts.js";
 import { resolveAndVerify, checkFileSize, resolveCwd, MAX_FILES } from "../utils/security.js";
-import { resolveModel, getFallbackModel, resolveEffort, resolveMaxBudget } from "../utils/model.js";
+import { resolveModel, getFallbackModel, resolveEffort, resolveMaxBudget, resolveTools } from "../utils/model.js";
 
 export interface QueryInput {
   prompt: string;
@@ -91,6 +91,7 @@ async function executeTextQuery(input: BaseQueryInput): Promise<QueryResult> {
     effort: resolveEffort("query", effort),
     sessionId,
     noSessionPersistence,
+    tools: resolveTools("query"),
     prompt: useStdin ? undefined : fullPrompt,
   });
 
@@ -126,6 +127,20 @@ async function executeTextQuery(input: BaseQueryInput): Promise<QueryResult> {
     timedOut: false,
     resolvedCwd: cwd,
   };
+}
+
+/**
+ * Tool set for the image path, where images arrive as paths and so `Read` is a
+ * functional requirement whatever the query tool set is configured to.
+ *
+ * The CLI's `default` keyword must stand alone: `--tools default Read` silently
+ * grants only `Read`, dropping the keyword. `default` already includes `Read`,
+ * so pass it through untouched instead of merging.
+ */
+function imageQueryTools(): string[] {
+  const configured = resolveTools("query");
+  if (configured.length === 1 && configured[0] === "default") return configured;
+  return [...new Set([...configured, "Read"])];
 }
 
 async function executeImageQuery(input: ImageQueryInput): Promise<QueryResult> {
@@ -170,7 +185,7 @@ async function executeImageQuery(input: ImageQueryInput): Promise<QueryResult> {
     effort: resolveEffort("query", effort),
     sessionId,
     noSessionPersistence,
-    allowedTools: ["Read"],
+    tools: imageQueryTools(),
   });
 
   const result = await spawnClaude({ args, cwd, stdin: fullPrompt, timeout: effectiveTimeout });

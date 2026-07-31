@@ -18,13 +18,15 @@ If you're in a terminal agent (Codex CLI, Gemini CLI) with shell access, call Cl
 
 ```bash
 # Analyze specific files
-claude -p --bare --allowed-tools "Read" "Analyze src/utils/parse.ts for edge cases"
+claude -p --bare --tools Read -- "Analyze src/utils/parse.ts for edge cases"
 
 # With budget cap
 claude -p --bare --max-budget-usd 0.50 "Is this retry logic sound?"
 ```
 
-`--bare` skips hooks, memory, and plugins for clean subprocess use. `--allowed-tools` controls exactly what Claude can access. `--max-budget-usd` prevents runaway costs.
+`--bare` skips hooks, memory, and plugins for clean subprocess use. `--tools` restricts which tools Claude can use at all; `--allowed-tools` only pre-approves permission and leaves everything else, including `Bash`, still reachable. `--max-budget-usd` prevents runaway costs.
+
+`--tools` is variadic, so end the list with `--` (or another flag) before the prompt. Without it the prompt is read as one more tool name and the CLI exits with "Input must be provided".
 
 For code review, see [Code review with this CLI](#code-review-with-this-cli).
 
@@ -160,6 +162,18 @@ Model resolution: explicit parameter > tool-specific env var > `CLAUDE_DEFAULT_M
 |----------|---------|-------------|
 | `CLAUDE_SEARCH_EFFORT` | `medium` | Default effort for search |
 | `CLAUDE_QUERY_EFFORT` | | Default effort for query |
+
+### Tools
+
+Each spawned subprocess gets an explicit built-in toolset. The defaults are read-only, so `Bash`, `Write` and `Edit` are not granted unless you widen them below.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CLAUDE_QUERY_TOOLS` | `Read Glob Grep` | Built-in tools for query |
+| `CLAUDE_STRUCTURED_TOOLS` | `Read Glob Grep` | Built-in tools for structured |
+| `CLAUDE_SEARCH_TOOLS` | `WebSearch WebFetch` | Built-in tools for search |
+
+Accepts a comma or space separated list, `default` for the CLI's full built-in set, or an empty value for no tools. Widening these gives the subprocess real capability in the working directory you pass it. See [SECURITY.md § Tool Sandboxing](SECURITY.md#tool-sandboxing).
 
 ## Choosing a Claude Code MCP server
 

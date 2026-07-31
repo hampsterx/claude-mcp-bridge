@@ -3,7 +3,7 @@ import { parseClaudeOutput, tryParsePartial, type ClaudeUsage } from "../utils/p
 import { checkAndThrow } from "../utils/errors.js";
 import { loadPrompt, buildLengthLimit } from "../utils/prompts.js";
 import { resolveCwd } from "../utils/security.js";
-import { resolveModel, getFallbackModel, resolveEffort, resolveMaxBudget } from "../utils/model.js";
+import { resolveModel, getFallbackModel, resolveEffort, resolveMaxBudget, resolveTools } from "../utils/model.js";
 
 export interface SearchInput {
   query: string;
@@ -48,7 +48,7 @@ export async function executeSearch(input: SearchInput): Promise<SearchResult> {
     effort: resolveEffort("search", effort),
     sessionId,
     noSessionPersistence,
-    allowedTools: ["WebSearch", "WebFetch"],
+    tools: resolveTools("search"),
   });
 
   const result = await spawnClaude({ args, cwd, stdin: prompt, timeout });

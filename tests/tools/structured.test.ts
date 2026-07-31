@@ -68,8 +68,12 @@ describe("executeStructured", () => {
     const call = spawnClaudeMock.mock.calls[0]![0];
     expect(call.cwd).toBe("/repo");
     expect(call.args).toContain("--json-schema");
-    expect(call.args).toContain("--model");
-    expect(call.args).toContain("sonnet");
+    expect(call.args).toContain("--model=sonnet");
+    const i = call.args.indexOf("--tools");
+    expect(call.args.slice(i + 1, i + 4)).toEqual(["Read", "Glob", "Grep"]);
+    for (const forbidden of ["Bash", "Write", "Edit"]) {
+      expect(call.args).not.toContain(forbidden);
+    }
     expect(result.valid).toBe(true);
     expect(JSON.parse(result.response) as { answer: string }).toEqual({ answer: "ok" });
     expect(result.sessionId).toBe("session-123");

@@ -39,6 +39,35 @@ export function resolveEffort(tool: ToolName, explicit?: string): string | undef
   return DEFAULT_EFFORT[tool];
 }
 
+/**
+ * Built-in tools each spawned subprocess may use.
+ *
+ * Read-only by default. The bridge inlines file contents itself before
+ * spawning, so the subprocess needs no execution or mutation tools; Bash,
+ * Write and Edit are withheld deliberately.
+ */
+const DEFAULT_TOOLS: Record<ToolName, string[]> = {
+  query: ["Read", "Glob", "Grep"],
+  structured: ["Read", "Glob", "Grep"],
+  search: ["WebSearch", "WebFetch"],
+  ping: [],
+};
+
+/**
+ * Resolve the built-in tool set for a subprocess.
+ *
+ * `CLAUDE_<TOOL>_TOOLS` overrides the default: a comma or space separated
+ * list of tool names, the literal `default` for the CLI's full built-in set,
+ * or an empty value for no tools at all.
+ */
+export function resolveTools(tool: ToolName): string[] {
+  const raw = process.env[`CLAUDE_${tool.toUpperCase()}_TOOLS`];
+  if (raw === undefined) return DEFAULT_TOOLS[tool];
+  const trimmed = raw.trim();
+  if (trimmed === "") return [];
+  return trimmed.split(/[,\s]+/).filter(Boolean);
+}
+
 export function resolveMaxBudget(explicit?: number): number {
   if (explicit !== undefined && explicit > 0) return explicit;
   const envVal = parseFloat(process.env["CLAUDE_MAX_BUDGET_USD"] ?? "0");

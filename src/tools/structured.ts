@@ -3,7 +3,7 @@ import { parseClaudeOutput, extractJson, type ClaudeUsage } from "../utils/parse
 import { checkAndThrow } from "../utils/errors.js";
 import { readFiles, assemblePrompt, isImageFile } from "../utils/files.js";
 import { resolveCwd, MAX_FILES } from "../utils/security.js";
-import { resolveModel, getFallbackModel, resolveMaxBudget } from "../utils/model.js";
+import { resolveModel, getFallbackModel, resolveMaxBudget, resolveTools } from "../utils/model.js";
 
 export const MAX_SCHEMA_SIZE = 20_000;
 
@@ -70,6 +70,7 @@ export async function executeStructured(input: StructuredInput): Promise<Structu
     maxBudgetUsd: resolveMaxBudget(maxBudgetUsd),
     sessionId,
     noSessionPersistence,
+    tools: resolveTools("structured"),
     jsonSchema: JSON.stringify(parsedSchema),
     prompt: useStdin ? undefined : fullPrompt,
   });
