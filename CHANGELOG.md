@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Changed
+
+- `npm audit` now reports a clean tree. The production tree inherits an express 5 / hono HTTP stack from `@modelcontextprotocol/sdk`, which serves the SDK's streamable-HTTP and SSE transports; this bridge registers stdio only, so that code never loads. An `overrides` block pins the flagged packages to fixed versions inside the ranges their dependents already declare, and `SECURITY.md` gains a "Dependency Audit Posture" section covering why the findings were unreachable and why overrides do not reach consumers.
+
 ## [0.7.0] - 2026-07-31
 
 Upgrade recommended for all users: 0.6.1 and earlier let a crafted `query` prompt execute arbitrary commands.

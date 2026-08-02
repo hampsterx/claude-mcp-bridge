@@ -106,3 +106,27 @@ Claude-mcp-bridge exposes cost caps at multiple levels:
 - **Fallback model**: On quota exhaustion, the bridge falls back to a cheaper model (default: haiku) rather than failing
 
 These controls prevent runaway costs when the bridge is used by automated orchestration systems that may make many calls.
+
+## Dependency Audit Posture
+
+`npm audit` reports 0 vulnerabilities in this repo's tree, production and dev.
+
+The production tree is one direct dependency deep: `@modelcontextprotocol/sdk` pulls an
+express 5 / hono HTTP stack to serve the SDK's streamable-HTTP and SSE transports. This
+bridge registers **stdio only** (`StdioServerTransport` in `src/index.ts`), so none of that
+HTTP code is reachable at runtime. Advisories against `hono`, `@hono/node-server`, `qs`,
+`body-parser`, `express-rate-limit`, `fast-uri` or `ip-address` therefore do not describe an
+exploitable path in this server, and any that appear before the SDK ships a fix should be
+read that way.
+
+`package.json` still carries an `overrides` block pinning those packages to fixed versions.
+Two limits worth knowing:
+
+- **Overrides do not propagate to consumers.** npm applies them only in the project that
+  declares them, so installing `claude-mcp-bridge` as a dependency resolves the SDK's own
+  ranges. The block keeps this repo's tree and CI clean; it is not a fix shipped downstream.
+- **Each pin stays inside the range its dependent declares** (for example `fast-uri ^3.1.5`
+  under ajv's `^3.0.1`, `@hono/node-server ^2.0.12` under the SDK's `^1.19.9 || ^2.0.5`), so
+  no dependent is forced across a major it never claimed to support.
+
+Drop an entry once the SDK's own range floors above it.
