@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
-- `npm audit` now reports a clean tree. The production tree inherits an express 5 / hono HTTP stack from `@modelcontextprotocol/sdk`, which serves the SDK's streamable-HTTP and SSE transports; this bridge registers stdio only, so that code never loads. An `overrides` block pins the flagged packages to fixed versions inside the ranges their dependents already declare, and `SECURITY.md` gains a "Dependency Audit Posture" section covering why the findings were unreachable and why overrides do not reach consumers.
+- `npm audit` now reports a clean tree. An `overrides` block raises the seven flagged transitive packages to a patched floor, each inside the range its immediate dependent already declares. Six of them (`hono`, `@hono/node-server`, `qs`, `body-parser`, `express-rate-limit`, `ip-address`) back the SDK's streamable-HTTP and SSE transports and never load in a stdio-only server. The seventh, `fast-uri`, does load: `McpServer` builds an ajv validator at construction, and ajv requires it. `SECURITY.md` gains a "Dependency Audit Posture" section drawing that line, and noting that npm overrides govern this repo's tree only and do not reach consumers of the published package.
 
 ## [0.7.0] - 2026-07-31
 
