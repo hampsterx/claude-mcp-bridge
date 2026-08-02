@@ -106,3 +106,46 @@ Claude-mcp-bridge exposes cost caps at multiple levels:
 - **Fallback model**: On quota exhaustion, the bridge falls back to a cheaper model (default: haiku) rather than failing
 
 These controls prevent runaway costs when the bridge is used by automated orchestration systems that may make many calls.
+
+## Dependency Audit Posture
+
+`npm audit` reports 0 vulnerabilities in this repo's tree, production and dev.
+
+The production tree is one direct dependency deep. `@modelcontextprotocol/sdk` supplies
+everything under it, and its advisories fall into two groups that deserve different
+readings. `package.json` carries an `overrides` block raising all of them to a patched
+floor (each entry is a `^` range, not an exact pin, so patches still flow); the
+distinction is what that floor is doing.
+
+**Not loaded: `hono`, `@hono/node-server`, `qs`, `body-parser`, `express-rate-limit`,
+`ip-address`.** These back the SDK's streamable-HTTP and SSE transports
+(`server/streamableHttp.js`, `server/sse.js`). This bridge registers **stdio only**
+(`StdioServerTransport` in `src/index.ts`), and the modules it does import
+(`server/mcp.js` → `server/index.js` → `shared/protocol.js`) never reach them. An
+advisory here does not describe an exploitable path in this server, and one that appears
+before the SDK ships a fix should be read that way. The floor keeps the tree clean.
+
+**Loaded: `fast-uri`.** This one is not part of the HTTP stack and is *not* unreachable.
+`server/index.js` imports `validation/ajv-provider.js` at module scope, that imports
+`ajv`, and `ajv/dist/runtime/uri.js` requires `fast-uri`. Constructing `McpServer` builds
+an `AjvJsonSchemaValidator`, so the URI parser is live from startup. Caller-controlled
+input does not currently reach it (the bridge registers no `outputSchema`, and the
+caller-supplied JSON Schema on `structured` is forwarded to the CLI as `--json-schema`
+rather than compiled by ajv), but the code is in the process. Treat its entry as real
+remediation, not tidy-up, and re-check reachability if the bridge ever registers an
+output schema or validates caller schemas locally.
+
+Two limits on the mechanism itself:
+
+- **Overrides do not propagate to consumers.** npm applies them only in the project that
+  declares them, so installing `claude-mcp-bridge` as a dependency resolves the SDK's own
+  ranges. The block governs this repo's tree and CI; it is not a fix shipped downstream.
+- **Each entry stays inside the range its dependent declares** (`fast-uri ^3.1.5` under
+  ajv's `^3.0.1`, `@hono/node-server ^2.0.12` under the SDK's `^1.19.9 || ^2.0.5`,
+  `ip-address ^10.4.0` under express-rate-limit's `^10.2.0`), so no dependent is forced
+  across a major it never claimed to support.
+
+Drop an entry once its **immediate dependent's** range floors above it, then confirm a
+clean install still resolves a non-vulnerable version without the override. That dependent
+is the SDK for `hono`, `@hono/node-server` and `express-rate-limit`, but ajv for
+`fast-uri`, express-rate-limit for `ip-address`, and express / body-parser for `qs`.

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Changed
+
+- `npm audit` now reports a clean tree. An `overrides` block raises the seven flagged transitive packages to a patched floor, each inside the range its immediate dependent already declares. Six of them (`hono`, `@hono/node-server`, `qs`, `body-parser`, `express-rate-limit`, `ip-address`) back the SDK's streamable-HTTP and SSE transports and never load in a stdio-only server. The seventh, `fast-uri`, does load: `McpServer` builds an ajv validator at construction, and ajv requires it. `SECURITY.md` gains a "Dependency Audit Posture" section drawing that line, and noting that npm overrides govern this repo's tree only and do not reach consumers of the published package.
+
 ## [0.7.0] - 2026-07-31
 
 Upgrade recommended for all users: 0.6.1 and earlier let a crafted `query` prompt execute arbitrary commands.
