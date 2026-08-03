@@ -16,7 +16,7 @@
     "prompts"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/postbuild.mjs",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "lint": "eslint src/ tests/",
@@ -25,7 +25,8 @@
     "test:watch": "vitest",
     "test:integration": "CLAUDE_INTEGRATION=1 vitest run tests/integration/",
     "smoke": "node scripts/smoke-test.mjs",
-    "prepublishOnly": "npm run build"
+    "check-release": "node scripts/check-release-coherence.mjs",
+    "prepublishOnly": "npm run check-release && npm run build"
   },
   "keywords": [
     "mcp",

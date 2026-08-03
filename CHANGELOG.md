@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed
+
+- `npm run build` marks `dist/index.js` executable. `tsc` writes the `bin` target 0644 despite its `#!/usr/bin/env node` shebang, so npx run from the package's own directory resolved the local `bin` and died with `sh: 1: claude-mcp-bridge: Permission denied`, which an MCP client surfaces only as `Connection closed`. Installs from the registry were never affected: npm sets the bit itself on the bin target. A `postbuild` step now does the same for local builds, via node rather than `chmod` so it holds on Windows.
+
+- `server.json` declares `CLAUDE_QUERY_TOOLS`, `CLAUDE_STRUCTURED_TOOLS` and `CLAUDE_SEARCH_TOOLS`, the tool-scoping vars added in 0.7.0. README and `SECURITY.md` documented them, the registry manifest did not, so anyone configuring the server from a listing (the VS Code `@mcp` gallery, PulseMCP) could not see the knobs that widen the read-only subprocess sandbox.
+
+### Added
+
+- `npm run check-release` gates a release on three coherence checks, wired into CI and `prepublishOnly`: `CHANGELOG.md` carries a section for the current version, `package-lock.json` and `server.json` agree with `package.json` on it, and every `CLAUDE_*` env var documented in the README is declared in `server.json`. The first two protect the publish (the MCP Registry rejects a version mismatch across `server.json.version`, `packages[0].version` and the npm tarball); the third protects what users see, and caught the `*_TOOLS` gap above.
+
 ## [0.7.1] - 2026-08-03
 
 No behaviour change: `dist/` is byte-identical to 0.7.0. This release exists to
