@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+
+- Integration tests that spawn the real Claude CLI and assert the 0.7.0 security guarantees against its actual behaviour: a flag-shaped `--settings=` prompt carrying a `SessionStart` hook does not execute the hook, a dash-prefixed session id is consumed by `--resume` rather than parsed as a flag of its own, and a subprocess granted `Read Glob Grep` cannot run a shell command. The first and third observe a filesystem sentinel rather than the model's wording, so they assert what the subprocess did, not what it said. The existing unit tests mock `spawn`, so they assert the argv we build and stay green if an upstream CLI release renames a flag or changes how it binds values. All three were confirmed to fail when the corresponding fix is reverted in `buildClaudeArgs`. Excluded from `npm test`; run with `npm run test:integration` (needs working auth, costs money).
+
 ### Changed
 
 - `npm audit` now reports a clean tree. An `overrides` block raises the seven flagged transitive packages to a patched floor, each inside the range its immediate dependent already declares. Six of them (`hono`, `@hono/node-server`, `qs`, `body-parser`, `express-rate-limit`, `ip-address`) back the SDK's streamable-HTTP and SSE transports and never load in a stdio-only server. The seventh, `fast-uri`, does load: `McpServer` builds an ajv validator at construction, and ajv requires it. `SECURITY.md` gains a "Dependency Audit Posture" section drawing that line, and noting that npm overrides govern this repo's tree only and do not reach consumers of the published package.
