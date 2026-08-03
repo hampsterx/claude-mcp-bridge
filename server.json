@@ -78,6 +78,27 @@
           "isRequired": false
         },
         {
+          "name": "CLAUDE_QUERY_TOOLS",
+          "description": "Built-in tools the query subprocess may use. Comma or space separated list, 'default' for the CLI's full built-in set, or empty for no tools. The default withholds Bash, Write and Edit; widening it grants real capability in the caller-supplied working directory.",
+          "format": "string",
+          "isRequired": false,
+          "default": "Read Glob Grep"
+        },
+        {
+          "name": "CLAUDE_STRUCTURED_TOOLS",
+          "description": "Built-in tools the structured subprocess may use. Same format and caveats as CLAUDE_QUERY_TOOLS.",
+          "format": "string",
+          "isRequired": false,
+          "default": "Read Glob Grep"
+        },
+        {
+          "name": "CLAUDE_SEARCH_TOOLS",
+          "description": "Built-in tools the search subprocess may use. Same format and caveats as CLAUDE_QUERY_TOOLS.",
+          "format": "string",
+          "isRequired": false,
+          "default": "WebSearch WebFetch"
+        },
+        {
           "name": "CLAUDE_QUERY_EFFORT",
           "description": "Reasoning effort for the query tool (low|medium|high|max).",
           "format": "string",
