@@ -4,7 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.7.1] - 2026-08-03
+
+No behaviour change: `dist/` is byte-identical to 0.7.0. This release exists to
+correct the package README, which still advertised a retired sibling bridge.
+
+### Changed
+
+- The bridge family table in the README no longer lists `gemini-mcp-bridge`, which was retired in May 2026 after Google discontinued the Gemini CLI. The npm package page pointed readers at a dead project. The family is `claude-mcp-bridge` and `codex-mcp-bridge`, and the comparison table is now a two-way one. Adds a CodeGuilds badge.
 
 ### Added
 
