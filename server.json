@@ -6,12 +6,12 @@
     "url": "https://github.com/hampsterx/claude-mcp-bridge",
     "source": "github"
   },
-  "version": "0.7.1",
+  "version": "0.7.2",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "claude-mcp-bridge",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "transport": {
         "type": "stdio"
       },

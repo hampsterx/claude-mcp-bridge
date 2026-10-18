@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.7.2] - 2026-10-19
+
+No change to the bridge's own source. This release re-clears the dependency tree
+(`@modelcontextprotocol/sdk` 1.32.1 and patched transitives), keeps the built entrypoint
+executable, and gates releases on version and env-var coherence.
 
 ### Fixed
 
