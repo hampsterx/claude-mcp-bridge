@@ -4,11 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.7.2] - 2026-10-19
+
+No change to the bridge's own source. This release re-clears the dependency tree
+(`@modelcontextprotocol/sdk` 1.32.1 and patched transitives), keeps the built entrypoint
+executable, and gates releases on changelog, version and env-var coherence.
 
 ### Fixed
 
-- `npm run build` marks `dist/index.js` executable. `tsc` writes the `bin` target 0644 despite its `#!/usr/bin/env node` shebang, so npx run from the package's own directory resolved the local `bin` and died with `sh: 1: claude-mcp-bridge: Permission denied`, which an MCP client surfaces only as `Connection closed`. Installs from the registry were never affected: npm sets the bit itself on the bin target. A `postbuild` step now does the same for local builds, via node rather than `chmod` so it holds on Windows.
+- `npm run build` marks `dist/index.js` executable. `tsc` writes the `bin` target 0644 despite its `#!/usr/bin/env node` shebang, so npx run from the package's own directory resolved the local `bin` and died with `sh: 1: claude-mcp-bridge: Permission denied`, which an MCP client surfaces only as `Connection closed`. Installs from the registry were never affected: npm sets the bit itself on the bin target. A `postbuild` step now does the same for local builds, via node rather than `chmod` so it holds on Windows. The Docker build stage copies that script in, and CI now builds the image, since the Dockerfile's own `COPY` list and `.dockerignore` decide what the build sees.
 
 - `server.json` declares `CLAUDE_QUERY_TOOLS`, `CLAUDE_STRUCTURED_TOOLS` and `CLAUDE_SEARCH_TOOLS`, the tool-scoping vars added in 0.7.0. README and `SECURITY.md` documented them, the registry manifest did not, so anyone configuring the server from a listing (the VS Code `@mcp` gallery, PulseMCP) could not see the knobs that widen the read-only subprocess sandbox.
 

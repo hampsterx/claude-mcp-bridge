@@ -33,3 +33,13 @@ jobs:
           npm pack --dry-run 2>&1 | tee /tmp/pack-output.txt
           test -f dist/index.js || (echo "FAIL: dist/index.js missing" && exit 1)
           ls prompts/*.md > /dev/null 2>&1 || (echo "FAIL: prompts/ missing" && exit 1)
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The image builds from its own COPY list and .dockerignore, not the
+      # checkout, so a build step that needs a new file passes the job above
+      # and fails only here.
+      - run: docker build -t claude-mcp-bridge:ci .
