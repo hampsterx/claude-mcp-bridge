@@ -8,7 +8,8 @@ coverage
 .codex
 tests
 docs
-scripts
+scripts/*
+!scripts/postbuild.mjs
 *.log
 .env
 .env.*

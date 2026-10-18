@@ -15,6 +15,7 @@ COPY package.json package-lock.json tsconfig.json ./
 RUN npm ci
 COPY src ./src
 COPY prompts ./prompts
+COPY scripts/postbuild.mjs ./scripts/postbuild.mjs
 RUN npm run build
 
 FROM node:22-alpine
