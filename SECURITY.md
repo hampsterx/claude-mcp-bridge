@@ -113,17 +113,26 @@ These controls prevent runaway costs when the bridge is used by automated orches
 
 The production tree is one direct dependency deep. `@modelcontextprotocol/sdk` supplies
 everything under it, and its advisories fall into two groups that deserve different
-readings. `package.json` carries an `overrides` block raising all of them to a patched
+readings. `package.json` carries an `overrides` block raising most of them to a patched
 floor (each entry is a `^` range, not an exact pin, so patches still flow); the
-distinction is what that floor is doing.
+distinction is what that floor is doing. A package whose dependent's own range already
+admits the fix, such as `proxy-addr` under express, needs only a lockfile refresh and no
+override.
 
 **Not loaded: `hono`, `@hono/node-server`, `qs`, `body-parser`, `express-rate-limit`,
-`ip-address`.** These back the SDK's streamable-HTTP and SSE transports
+`ip-address`, `proxy-addr`.** These back the SDK's streamable-HTTP and SSE transports
 (`server/streamableHttp.js`, `server/sse.js`). This bridge registers **stdio only**
 (`StdioServerTransport` in `src/index.ts`), and the modules it does import
 (`server/mcp.js` → `server/index.js` → `shared/protocol.js`) never reach them. An
 advisory here does not describe an exploitable path in this server, and one that appears
 before the SDK ships a fix should be read that way. The floor keeps the tree clean.
+The same holds for advisories against the SDK's OAuth client (`client/auth.js`): the
+bridge is a server and imports nothing under `client/`. The SDK's own floor in
+`dependencies` is raised past those for the same reason the overrides are.
+
+Tracing every module the built server loads during an `initialize` handshake (SDK
+1.32.1) confirms both halves: `ajv` and `fast-uri` appear, and nothing from express,
+hono, the SDK's `client/` tree or the packages listed above does.
 
 **Loaded: `fast-uri`.** This one is not part of the HTTP stack and is *not* unreachable.
 `server/index.js` imports `validation/ajv-provider.js` at module scope, that imports
@@ -140,9 +149,9 @@ Two limits on the mechanism itself:
 - **Overrides do not propagate to consumers.** npm applies them only in the project that
   declares them, so installing `claude-mcp-bridge` as a dependency resolves the SDK's own
   ranges. The block governs this repo's tree and CI; it is not a fix shipped downstream.
-- **Each entry stays inside the range its dependent declares** (`fast-uri ^3.1.5` under
+- **Each entry stays inside the range its dependent declares** (`fast-uri ^3.1.8` under
   ajv's `^3.0.1`, `@hono/node-server ^2.0.12` under the SDK's `^1.19.9 || ^2.0.5`,
-  `ip-address ^10.4.0` under express-rate-limit's `^10.2.0`), so no dependent is forced
+  `ip-address ^10.7.1` under express-rate-limit's `^10.2.0`), so no dependent is forced
   across a major it never claimed to support.
 
 Drop an entry once its **immediate dependent's** range floors above it, then confirm a
