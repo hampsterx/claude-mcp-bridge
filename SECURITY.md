@@ -120,10 +120,10 @@ admits the fix, such as `proxy-addr` under express, needs only a lockfile refres
 override.
 
 **Not loaded: `hono`, `@hono/node-server`, `qs`, `body-parser`, `express-rate-limit`,
-`ip-address`, `proxy-addr`.** These back the SDK's HTTP surface: the streamable-HTTP and
-SSE transports (`server/streamableHttp.js`, `server/sse.js`), and the express helpers and
-OAuth router (`server/express.js`, `server/auth/`) that bring in express and everything
-under it. This bridge registers **stdio only**
+`ip-address`, `proxy-addr`.** These back the SDK's HTTP surface: the streamable-HTTP
+transport (`server/streamableHttp.js`) brings in the hono pair, and the express helpers and
+OAuth router (`server/express.js`, `server/auth/`) bring in express, express-rate-limit
+and everything under them. This bridge registers **stdio only**
 (`StdioServerTransport` in `src/index.ts`), and the modules it does import
 (`server/mcp.js` → `server/index.js` → `shared/protocol.js`) never reach them. An
 advisory here does not describe an exploitable path in this server, and one that appears
